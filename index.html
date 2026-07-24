@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tablero de seguimiento — Escuela de Bachilleres UAQ (prototipo)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --eje-mat:#8DC63F; --eje-len:#22B573; --eje-soc:#00743F;
+  --eje-hum:#FBB040; --eje-nat:#F26522; --eje-per:#A6192E;
+  --uaq:#29AAE1; --uaq-dark:#1B7FAB;
+  --band:#7A7D80;
+  --page:#E9EBED; --surface:#FFFFFF; --card:#E6E7E8;
+  --ink:#191B1E; --ink-2:#5A5F66; --ink-3:#8A9098;
+  --line:#D3D7DB;
+  --rep:#A6192E; --riesgo:#E08A00; --ok:#00743F;
+  --shadow:0 1px 2px rgba(25,27,30,.08),0 8px 24px rgba(25,27,30,.06);
+  --r:3px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--page); color:var(--ink);
+  font-family:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4,.display{font-family:'Archivo','Archivo Narrow',Helvetica,Arial,sans-serif;letter-spacing:-.01em;margin:0}
+.num{font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;font-weight:600}
+button{font:inherit;cursor:pointer}
+a{color:var(--uaq-dark)}
+:focus-visible{outline:2px solid var(--uaq);outline-offset:2px}
+
+/* ---------- estructura ---------- */
+#app{min-height:100vh;display:flex;flex-direction:column}
+.topbar{background:var(--uaq);color:#fff;display:flex;align-items:center;gap:14px;padding:10px 18px;flex-wrap:wrap}
+.crest{width:34px;height:34px;border:1.5px solid rgba(255,255,255,.85);border-radius:50%;display:grid;place-items:center;font-family:'Archivo';font-size:11px;font-weight:700;letter-spacing:.04em;flex:none}
+.topbar .who{font-family:'Archivo';font-weight:600;font-size:13px;letter-spacing:.06em;text-transform:uppercase;line-height:1.15}
+.topbar .who small{display:block;font-family:'IBM Plex Sans';font-weight:400;font-size:11px;letter-spacing:.02em;text-transform:none;opacity:.9}
+.topbar .spacer{flex:1}
+.chip-role{background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.35);color:#fff;padding:5px 10px;border-radius:var(--r);font-size:12px;letter-spacing:.04em}
+.band{background:var(--band);color:#fff;padding:7px 18px;font-family:'Archivo';font-weight:600;font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.band .sim{font-family:'IBM Plex Sans';font-weight:400;letter-spacing:.02em;text-transform:none;font-size:12px;opacity:.92}
+nav.tabs{background:var(--surface);border-bottom:1px solid var(--line);display:flex;gap:0;overflow-x:auto}
+nav.tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:12px 16px;color:var(--ink-2);font-size:13.5px;white-space:nowrap}
+nav.tabs button[aria-current="true"]{color:var(--ink);border-bottom-color:var(--uaq);font-weight:600}
+main{flex:1;padding:22px 18px 90px;max-width:1240px;width:100%;margin:0 auto}
+.eyebrow{font-family:'Archivo';font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+.lead{color:var(--ink-2);font-size:14px;max-width:70ch;margin:6px 0 20px}
+section.block{margin-bottom:30px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.panel-h{padding:13px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.panel-h h3{font-size:15px}
+.panel-b{padding:16px}
+
+/* ---------- tarjeta materia (firma: la tira) ---------- */
+.tira{display:grid;grid-template-columns:repeat(6,minmax(178px,1fr));gap:12px;overflow-x:auto;padding-bottom:6px}
+.tira-col h4{background:#DDE0E3;color:var(--ink);font-size:12px;letter-spacing:.1em;text-transform:uppercase;padding:7px 9px;margin-bottom:9px;text-align:center}
+.mat{background:var(--card);border-left:7px solid var(--line);padding:8px 10px 9px;margin-bottom:9px;position:relative;cursor:default;transition:transform .12s ease}
+.mat:hover{transform:translateX(2px)}
+.mat .n{font-size:12.5px;line-height:1.3;color:#2A2D31;min-height:2.6em}
+.mat .meter{height:5px;background:#CDD1D5;margin-top:7px;position:relative;overflow:hidden}
+.mat .meter i{display:block;height:100%}
+.mat .pct{font-size:11px;color:var(--ink-2);margin-top:4px;display:flex;justify-content:space-between}
+.e-mat{border-left-color:var(--eje-mat)} .e-len{border-left-color:var(--eje-len)}
+.e-soc{border-left-color:var(--eje-soc)} .e-hum{border-left-color:var(--eje-hum)}
+.e-nat{border-left-color:var(--eje-nat)} .e-per{border-left-color:var(--eje-per)}
+.leyenda{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:11.5px;color:var(--ink-2)}
+.leyenda span{display:flex;align-items:center;gap:6px}
+.dot{width:11px;height:11px;display:inline-block;border-radius:2px}
+
+/* ---------- kpis ---------- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--ink-3);padding:13px 14px;border-radius:var(--r)}
+.kpi .v{font-family:'IBM Plex Mono';font-weight:600;font-size:30px;line-height:1;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:12px;color:var(--ink-2);margin-top:6px}
+.kpi.rep{border-left-color:var(--rep)} .kpi.rie{border-left-color:var(--riesgo)}
+.kpi.ok{border-left-color:var(--ok)} .kpi.cap{border-left-color:var(--uaq)}
+
+/* ---------- tablas ---------- */
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;font-family:'Archivo';font-weight:600;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--surface);position:sticky;top:0}
+td{padding:8px 10px;border-bottom:1px solid #EDEFF1;vertical-align:middle}
+tr:hover td{background:#F6F8F9}
+.scrollx{overflow-x:auto}
+.tag{display:inline-block;padding:2px 7px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.02em;white-space:nowrap}
+.t-rep{background:#F6E3E6;color:var(--rep)} .t-rie{background:#FBEEDA;color:#8A5400}
+.t-ok{background:#E0EFE7;color:var(--ok)} .t-na{background:#E7E3F0;color:#4B3E82}
+.t-pend{background:#E6E9EC;color:var(--ink-2)}
+.g{font-family:'IBM Plex Mono';font-weight:600;font-variant-numeric:tabular-nums}
+.g-rep{color:var(--rep)} .g-rie{color:#8A5400} .g-ok{color:var(--ok)} .g-na{color:#4B3E82} .g-pend{color:var(--ink-3)}
+
+/* ---------- controles ---------- */
+.btn{background:var(--uaq);color:#fff;border:1px solid var(--uaq-dark);padding:9px 15px;border-radius:var(--r);font-size:13.5px;font-weight:500}
+.btn:hover{background:var(--uaq-dark)}
+.btn.ghost{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{background:#F1F3F5}
+.btn.small{padding:5px 10px;font-size:12px}
+.btn.danger{background:var(--rep);border-color:#7E1222}
+select,input[type=text],input[type=search],textarea,input[type=number]{
+  font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);color:var(--ink);max-width:100%}
+textarea{width:100%;min-height:92px;resize:vertical}
+label.field{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--ink-2)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.hint{font-size:12px;color:var(--ink-3)}
+
+/* captura */
+.cap-input{width:74px;text-align:center;font-family:'IBM Plex Mono';font-weight:600;font-size:15px;padding:6px}
+.cap-input.bad{border-color:var(--rep);background:#FDF4F5}
+.cap-input.na{color:#4B3E82}
+.note-btn{background:none;border:1px solid var(--line);border-radius:var(--r);padding:3px 8px;font-size:11.5px;color:var(--ink-2)}
+.note-btn.has{border-color:var(--uaq);color:var(--uaq-dark);font-weight:600}
+
+/* alertas */
+.alerta{display:flex;gap:12px;padding:11px 13px;border:1px solid var(--line);border-left:5px solid var(--rep);background:var(--surface);border-radius:var(--r);margin-bottom:9px;align-items:flex-start;flex-wrap:wrap}
+.alerta.na{border-left-color:#4B3E82} .alerta.rei{border-left-color:#8A5400}
+.alerta .txt{flex:1;min-width:200px;font-size:13.5px}
+.alerta .txt b{font-weight:600}
+.alerta .met{font-size:12px;color:var(--ink-2);margin-top:3px}
+
+/* comentar */
+.fab{position:fixed;right:18px;bottom:18px;z-index:40;background:var(--ink);color:#fff;border:0;border-radius:24px;padding:12px 18px;font-size:13.5px;font-weight:500;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.fab:hover{background:#000}
+.modal-bg{position:fixed;inset:0;background:rgba(20,22,25,.55);display:grid;place-items:center;z-index:60;padding:16px}
+.modal{background:var(--surface);border-radius:var(--r);max-width:720px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.modal-h{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}
+.modal-b{padding:18px}
+.modal-f{padding:14px 18px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.x{background:none;border:0;font-size:22px;line-height:1;color:var(--ink-3);padding:2px 6px}
+
+/* toast */
+#toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:var(--r);font-size:13.5px;opacity:0;pointer-events:none;transition:.22s ease;z-index:80;max-width:90vw}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* login */
+.gate{min-height:100vh;display:grid;place-items:center;padding:22px;background:
+  linear-gradient(180deg,#E9EBED 0%,#DDE1E4 100%)}
+.gate-card{background:var(--surface);max-width:660px;width:100%;box-shadow:var(--shadow);border-radius:var(--r);overflow:hidden}
+.gate-card .hd{background:var(--uaq);color:#fff;padding:20px 22px}
+.gate-card .hd h1{font-size:21px;letter-spacing:-.02em}
+.gate-card .hd p{margin:6px 0 0;font-size:13px;opacity:.95}
+.gate-b{padding:22px}
+.pick{display:grid;gap:10px}
+.pick button{text-align:left;background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--uaq);padding:12px 14px;border-radius:var(--r)}
+.pick button:hover{background:#F4F7F9}
+.pick .r{font-family:'Archivo';font-weight:600;font-size:14px}
+.pick .d{font-size:12.5px;color:var(--ink-2);margin-top:2px}
+.pick button.prof{border-left-color:var(--eje-mat)}
+
+.subtabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 16px}
+.subtabs button{background:var(--surface);border:1px solid var(--line);padding:7px 12px;border-radius:var(--r);font-size:13px;color:var(--ink-2)}
+.subtabs button[aria-current="true"]{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:600}
+.aviso{background:#FFF8E6;border:1px solid #F0DCA8;border-left:5px solid var(--riesgo);padding:11px 13px;border-radius:var(--r);font-size:13px;margin-bottom:14px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+ul.plain{margin:0;padding-left:18px;font-size:13.5px;color:var(--ink-2)}
+ul.plain li{margin-bottom:7px}
+.sep{height:1px;background:var(--line);margin:18px 0}
+@media (max-width:640px){
+  main{padding:16px 12px 90px}
+  .tira{grid-template-columns:repeat(6,minmax(160px,1fr))}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal-root"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+
+<script>
+/* ============================================================
+   TABLERO DE SEGUIMIENTO — PROTOTIPO NO FUNCIONAL
+   Datos ficticios generados en memoria. Nada se guarda ni se envía.
+   ============================================================ */
+
+/* ---------- utilidades ---------- */
+let _seed = 20260724;
+function rnd(){ _seed = (_seed*1664525 + 1013904223) % 4294967296; return _seed/4294967296; }
+function pick(a){ return a[Math.floor(rnd()*a.length)]; }
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function el(id){ return document.getElementById(id); }
+function toast(m){ const t=el('toast'); t.textContent=m; t.classList.add('on'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('on'),2600); }
+
+/* ---------- catálogo: ejes y plan 2019 ---------- */
+const EJES = {
+  mat:{n:'Matemático y de Razonamiento',c:'#8DC63F'},
+  len:{n:'Lenguaje y Comunicación',c:'#22B573'},
+  soc:{n:'Ciencias Sociales',c:'#00743F'},
+  hum:{n:'Humanidades',c:'#FBB040'},
+  nat:{n:'Ciencias Naturales y Experimentales',c:'#F26522'},
+  per:{n:'Formación Personal',c:'#A6192E'}
+};
+const PLAN = [
+  [ ['Matemáticas I','mat',6],['Lectura y Redacción I','len',6],['Informática I','len',6],['Inglés I','len',6],['Historia I','soc',6],['Lógica I','hum',6],['Química I','nat',6],['Orientación Educativa','per',6] ],
+  [ ['Matemáticas II','mat',6],['Lectura y Redacción II','len',6],['Informática II','len',6],['Inglés II','len',6],['Historia II','soc',6],['Lógica II','hum',6],['Química II','nat',6],['Cultura Física','per',3] ],
+  [ ['Matemáticas III','mat',6],['Etimologías Grecolatinas del Español','len',6],['Inglés III','len',6],['Historia III','soc',6],['Filosofía I','hum',6],['Laboratorio de Química','nat',6],['Biología I','nat',6] ],
+  [ ['Matemáticas IV','mat',6],['Inglés IV','len',6],['Sociología','soc',6],['Filosofía II','hum',6],['Física I','nat',6],['Biología II','nat',6],['Orientación Vocacional Profesional','per',6] ],
+  [ ['Matemáticas V','mat',6],['Inglés V','len',6],['Derecho','soc',6],['Arte y Estética','hum',6],['Física II','nat',6],['Laboratorio de Biología','nat',6],['Psicología','per',6] ],
+  [ ['Matemáticas VI','mat',6],['Inglés VI','len',6],['Economía','soc',6],['Formación Cívica y Ética','hum',6],['Laboratorio Física','nat',6],['Formación Ambiental','nat',6] ]
+];
+const MATERIAS = []; // {id, nombre, eje, creditos, sem}
+PLAN.forEach((lista,i)=>lista.forEach(([n,e,c],j)=>MATERIAS.push({id:'m'+(i+1)+'-'+j, nombre:n, eje:e, creditos:c, sem:i+1})));
+const matById = Object.fromEntries(MATERIAS.map(m=>[m.id,m]));
+
+/* ---------- personas ficticias ---------- */
+const NOM_F = ['Alondra','Ximena','Fernanda','Guadalupe','Renata','Citlali','Mariana','Paola','Itzel','Danna','Valeria','Camila','Yaretzi','Andrea','Regina','Melissa','Jimena','Dulce','Ana Sofía','Karina','Brisa','Nayeli','Estefanía','Perla'];
+const NOM_M = ['Emiliano','Santiago','Ángel','Diego','Uriel','Rodrigo','Iván','Kevin','Bryan','Josué','Alexis','Gael','Cristian','Erick','Óscar','Fernando','Isaac','Julián','Mauricio','Raúl','Aldo','Jesús','Efraín','Ulises'];
+const APE = ['Aguilar','Alvarado','Barrón','Bocanegra','Cabrera','Camacho','Cervantes','Chávez','De la Cruz','Elizondo','Ferrusca','Gudiño','Hernández','Ibarra','Jaramillo','Landaverde','Maqueda','Mendieta','Nieves','Olguín','Pacheco','Quiroz','Reséndiz','Salinas','Trejo','Uribe','Valencia','Yáñez','Zamorano','Rangel','Ledesma','Feregrino','Mancilla','Rubio','Sandoval','Tovar'];
+const PROFES = [
+  {id:'p1', nombre:'Mtra. Rocío Zúñiga Márquez', correo:'rocio.zuniga@uaq.mx'},
+  {id:'p2', nombre:'Mtro. Aurelio Nieto Palacios', correo:'aurelio.nieto@uaq.mx'},
+  {id:'p3', nombre:'Lic. Fabiola Cárdenas Ruiz', correo:'fabiola.cardenas@uaq.mx'},
+  {id:'p4', nombre:'Ing. Damián Ortega Fuentes', correo:'damian.ortega@uaq.mx'},
+  {id:'p5', nombre:'Mtra. Leticia Bárcenas Soto', correo:'leticia.barcenas@uaq.mx'},
+  {id:'p6', nombre:'Dr. Ismael Prieto Andrade', correo:'ismael.prieto@uaq.mx'},
+  {id:'p7', nombre:'Lic. Norma Guillén Estrada', correo:'norma.guillen@uaq.mx'},
+  {id:'p8', nombre:'Mtro. Sergio Alcocer Ríos', correo:'sergio.alcocer@uaq.mx'}
+];
+PROFES.forEach(p=>p.activo=true);
+const COORD = [
+  {id:'c1', nombre:'Mtra. Coordinadora (nombre ficticio)', correo:'coordinacion.bachilleres@uaq.mx', rol:'Coordinación'},
+  {id:'c2', nombre:'Secretaria académica (nombre ficticio)', correo:'secretaria.bachilleres@uaq.mx', rol:'Secretaría'}
+];
+
+COORD.forEach(c=>c.activo=true);
+
+/* ---------- calendario del ciclo ---------- */
+const HOY = new Date(2026,9,27); // 27 de octubre de 2026 (fecha simulada)
+const CICLO = '2026-2';
+const CALENDARIO = [
+  {parcial:1, etiqueta:'Primer parcial',  apertura:'7 sep 2026',  limite:'18 sep 2026', cerrado:true},
+  {parcial:2, etiqueta:'Segundo parcial', apertura:'12 oct 2026', limite:'23 oct 2026', cerrado:true},
+  {parcial:3, etiqueta:'Tercer parcial',  apertura:'16 nov 2026', limite:'27 nov 2026', cerrado:false},
+  {parcial:'F', etiqueta:'Calificación final', apertura:'30 nov 2026', limite:'11 dic 2026', cerrado:false}
+];
+
+/* ---------- generación de datos ficticios ---------- */
+const GRUPOS = [1,2,3,4,5,6].map(s=>({id:s+'A', sem:s}));
+const ALUMNOS = [];
+GRUPOS.forEach(g=>{
+  const usados = new Set();
+  for(let i=0;i<20;i++){
+    let nom, ap1, ap2, clave;
+    do{
+      nom = rnd()<0.52 ? pick(NOM_F) : pick(NOM_M);
+      ap1 = pick(APE); ap2 = pick(APE);
+      clave = nom+ap1+ap2;
+    } while(usados.has(clave) || ap1===ap2);
+    usados.add(clave);
+    const r = rnd();
+    const perfil = r<0.16 ? 'frágil' : (r<0.42 ? 'irregular' : 'estable');
+    ALUMNOS.push({
+      matricula: String(300000 + ALUMNOS.length*7 + g.sem*11),
+      nombre: ap1+' '+ap2+' '+nom,
+      grupo: g.id, sem: g.sem, estado:'activo', perfil
+    });
+  }
+});
+ALUMNOS.sort((a,b)=> a.grupo.localeCompare(b.grupo) || a.nombre.localeCompare(b.nombre,'es'));
+let alumnoByMat = {};
+function reindexAlumnos(){ alumnoByMat = Object.fromEntries(ALUMNOS.map(a=>[a.matricula,a])); }
+function ordenarAlumnos(){ ALUMNOS.sort((a,b)=> a.grupo.localeCompare(b.grupo) || a.nombre.localeCompare(b.nombre,'es')); }
+reindexAlumnos();
+function rosterDe(grupo){ return ALUMNOS.filter(a=>a.grupo===grupo && a.estado!=='baja'); }
+function crearRegistrosAlumno(a){
+  MATERIAS.filter(m=>m.sem===a.sem).forEach(m=>{
+    [1,2,3,'F'].forEach(p=>{
+      if(!getReg(a.matricula,m.id,CICLO,p))
+        setReg({matricula:a.matricula, materiaId:m.id, ciclo:CICLO, parcial:p, valor:null, estado:'pendiente', nota:'', capturadoPor:null});
+    });
+  });
+}
+
+/* asignación profesor ↔ materia ↔ grupo */
+const ASIG = [];
+GRUPOS.forEach(g=>{
+  MATERIAS.filter(m=>m.sem===g.sem).forEach((m,i)=>{
+    ASIG.push({materiaId:m.id, grupo:g.id, profesorId:PROFES[(i + g.sem) % PROFES.length].id});
+  });
+});
+// el profesor de demostración concentra varias materias
+['m1-0','m2-0','m3-0','m4-0'].forEach(id=>{ const a=ASIG.find(x=>x.materiaId===id); if(a) a.profesorId='p1'; });
+function asigDe(profesorId){ return ASIG.filter(a=>a.profesorId===profesorId); }
+function profeDe(materiaId,grupo){ const a=ASIG.find(x=>x.materiaId===materiaId&&x.grupo===grupo); return a?PROFES.find(p=>p.id===a.profesorId):null; }
+
+/* registros: una fila por alumno-materia-ciclo-parcial (modelo largo) */
+const REG = new Map(); // clave -> {matricula,materiaId,ciclo,parcial,valor,estado,nota,capturadoPor}
+function key(mat,mid,ciclo,p){ return mat+'|'+mid+'|'+ciclo+'|'+p; }
+function setReg(o){ REG.set(key(o.matricula,o.materiaId,o.ciclo,o.parcial), o); }
+function getReg(mat,mid,ciclo,p){ return REG.get(key(mat,mid,ciclo,p)) || null; }
+
+function notaSegunPerfil(perfil, sesgo){
+  const base = perfil==='frágil' ? 5.2 : perfil==='irregular' ? 6.9 : 8.3;
+  let v = base + (rnd()-0.5)*2.6 + (sesgo||0);
+  return Math.max(0, Math.min(10, v));
+}
+/* ciclo en curso: parciales 1 y 2 capturados; 3 y final abiertos */
+ALUMNOS.forEach(a=>{
+  MATERIAS.filter(m=>m.sem===a.sem).forEach(m=>{
+    const dif = m.eje==='mat'||m.eje==='nat' ? -0.7 : (m.eje==='per' ? 0.9 : 0);
+    [1,2,3,'F'].forEach(p=>{
+      let estado='pendiente', valor=null;
+      if(p===1){ estado='capturado'; valor = rnd()<0.015 ? 'NA' : +notaSegunPerfil(a.perfil,dif).toFixed(1); }
+      else if(p===2){
+        const capturado = rnd()<0.88;
+        if(capturado){ estado='capturado'; valor = rnd()<0.02 ? 'NA' : +notaSegunPerfil(a.perfil,dif-0.2).toFixed(1); }
+      }
+      setReg({matricula:a.matricula, materiaId:m.id, ciclo:CICLO, parcial:p, valor, estado, nota:'', capturadoPor: estado==='capturado' ? (profeDe(m.id,a.grupo)||{}).id : null});
+    });
+  });
+});
+/* historial: semestres ya cursados, sólo calificación final */
+ALUMNOS.forEach(a=>{
+  for(let s=1; s<a.sem; s++){
+    MATERIAS.filter(m=>m.sem===s).forEach(m=>{
+      const dif = m.eje==='mat'||m.eje==='nat' ? -0.7 : 0;
+      let valor;
+      if(rnd()<0.012) valor='NA';
+      else valor = Math.max(0,Math.min(10, Math.round(notaSegunPerfil(a.perfil,dif+0.9))));
+      setReg({matricula:a.matricula, materiaId:m.id, ciclo:'hist-'+s, parcial:'F', valor, estado:'capturado', nota:'', capturadoPor:null});
+      // recursamiento: si reprobó, deja registro de segundo intento
+      const reprobo = valor==='NA' || valor<6;
+      if(reprobo && rnd()<0.5){
+        let v2 = rnd()<0.28 ? (rnd()<0.25?'NA':Math.round(3+rnd()*2.6)) : Math.round(6+rnd()*2);
+        setReg({matricula:a.matricula, materiaId:m.id, ciclo:'hist-'+s+'r', parcial:'F', valor:v2, estado:'capturado', nota:'Recursamiento', capturadoPor:null});
+      }
+    });
+  }
+});
+
+/* ---------- estado de la sesión ---------- */
+const S = {
+  rol:null, actor:null, vista:'panorama',
+  cap:{materiaId:null, grupo:null, parcial:1},
+  filtro:{grupo:'todos', alerta:'todas', q:''},
+  umbral:{aprobatoria:6, materiasRiesgo:2, naAlerta:2, reincidencia:2},
+  comentarios:[], alumnoAbierto:null, borrador:{},
+  configTab:'profesores', cfgGrupo:'1A', aviso:{previo:3, mismodia:'si'}
+};
+const HOJA_URL_FIJA = 'https://script.google.com/macros/s/AKfycbw18d3hzDCqbICfWkh3AzDenOXItFAB9jHlWJ0aNSZwTEwJ6qoGVabQNmUCaQ5lo0JXyg/exec';
+const CONEXION = {url:HOJA_URL_FIJA, token:'bachilleres2026', estado:'sin configurar', ultimo:''};
+const HOJA_LIGA = 'https://docs.google.com/spreadsheets/d/1khslOQloiSDQVUJBmOT4mrDFkyGZNiU8o6jvFoqUyds/edit';
+function guardarConexion(){ try{ localStorage.setItem('tablero-conexion', JSON.stringify({url:CONEXION.url, token:CONEXION.token})); }catch(e){} }
+function cargarConexion(){
+  try{ const d=JSON.parse(localStorage.getItem('tablero-conexion')||'null'); if(d&&d.url){ CONEXION.url=d.url; CONEXION.token=d.token||CONEXION.token; } }catch(e){}
+  if(!CONEXION.url) CONEXION.url = HOJA_URL_FIJA;
+}
+function pendientes(){ return S.comentarios.filter(c=>!c.enviado); }
+function nuevoId(){ return 'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+async function enviarASheet(lista){
+  if(!CONEXION.url) return {ok:false, error:'Falta la dirección del script'};
+  const cuerpo = JSON.stringify({token:CONEXION.token, comentarios:lista});
+  try{
+    const r = await fetch(CONEXION.url, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:cuerpo});
+    return await r.json();
+  }catch(e){
+    try{ await fetch(CONEXION.url, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:cuerpo});
+         return {ok:true, ciego:true};
+    }catch(e2){ return {ok:false, error:'No hubo respuesta de la hoja'}; }
+  }
+}
+async function sincronizar(silencioso){
+  const lista = pendientes();
+  if(!lista.length){ if(!silencioso) toast('No hay comentarios pendientes'); return; }
+  const r = await enviarASheet(lista);
+  if(r.ok){
+    lista.forEach(c=>c.enviado=true);
+    CONEXION.estado = r.ciego? 'enviado sin confirmación' : 'conectado';
+    persistir(); render();
+    toast(r.ciego? 'Enviado a la hoja (sin confirmación de recibo)' : lista.length+' comentario'+(lista.length===1?'':'s')+' en la hoja');
+  } else {
+    CONEXION.estado = 'sin conexión'; render();
+    if(!silencioso) toast('No se pudo enviar: '+(r.error||'revisa la dirección'));
+  }
+}
+async function traerDeSheet(){
+  if(!CONEXION.url){ toast('Falta configurar la dirección de la hoja'); return; }
+  try{
+    const r = await fetch(CONEXION.url+'?token='+encodeURIComponent(CONEXION.token));
+    const d = await r.json();
+    if(!d.ok){ toast('La hoja respondió: '+(d.error||'error')); return; }
+    const mios = new Set(S.comentarios.map(c=>c.id));
+    let n=0;
+    (d.comentarios||[]).forEach(c=>{ if(c.id && !mios.has(c.id)){ S.comentarios.push(Object.assign({}, c, {enviado:true})); n++; } });
+    CONEXION.estado='conectado'; persistir(); render();
+    toast(n? n+' comentario'+(n===1?'':'s')+' traído'+(n===1?'':'s')+' de la hoja' : 'La hoja no tiene comentarios nuevos');
+  }catch(e){ CONEXION.estado='sin conexión'; render(); toast('No se pudo leer la hoja desde este navegador'); }
+}
+
+const BITACORA = [];
+let PERSISTE = true;
+function bita(accion, detalle){
+  BITACORA.push({hora:new Date().toLocaleString('es-MX'), autor:S.actor?S.actor.nombre:'—', accion, detalle:detalle||''});
+  persistir();
+}
+function persistir(){
+  try{ localStorage.setItem('tablero-bachilleres', JSON.stringify({comentarios:S.comentarios, bitacora:BITACORA})); }
+  catch(e){ PERSISTE = false; }
+}
+function recuperar(){
+  try{
+    const d = JSON.parse(localStorage.getItem('tablero-bachilleres')||'null');
+    if(d){ if(d.comentarios) S.comentarios = d.comentarios; if(d.bitacora) d.bitacora.forEach(b=>BITACORA.push(b)); }
+  }catch(e){ PERSISTE = false; }
+}
+function paqueteRespaldo(){ return JSON.stringify({version:1, generado:new Date().toISOString(), comentarios:S.comentarios, bitacora:BITACORA}, null, 2); }
+function descargar(nombre, texto, tipo){
+  const b = new Blob([texto],{type:tipo||'text/plain'}); const u = URL.createObjectURL(b);
+  const a = document.createElement('a'); a.href=u; a.download=nombre; a.click(); URL.revokeObjectURL(u);
+}
+
+/* ---------- cálculo de indicadores ---------- */
+function regsCiclo(mat){ return MATERIAS.filter(m=>m.sem===alumnoByMat[mat].sem).map(m=>({m, p:[1,2,3].map(p=>getReg(mat,m.id,CICLO,p))})); }
+function promParciales(mat, mid){
+  const vals=[1,2,3].map(p=>getReg(mat,mid,CICLO,p)).filter(r=>r&&r.estado==='capturado'&&r.valor!=='NA'&&r.valor!==null).map(r=>r.valor);
+  const nas =[1,2,3].map(p=>getReg(mat,mid,CICLO,p)).filter(r=>r&&r.valor==='NA').length;
+  if(!vals.length) return {prom:null, nas};
+  return {prom: vals.reduce((s,v)=>s+v,0)/vals.length, nas};
+}
+function diagnostico(a){
+  const U=S.umbral;
+  let reprobando=[], nas=0;
+  MATERIAS.filter(m=>m.sem===a.sem).forEach(m=>{
+    const {prom, nas:n} = promParciales(a.matricula, m.id);
+    nas += n;
+    if(prom!==null && prom < U.aprobatoria) reprobando.push({materia:m, prom});
+  });
+  // historial
+  const rep = {};
+  let nasHist=0;
+  REG.forEach(r=>{
+    if(r.matricula!==a.matricula || r.ciclo===CICLO) return;
+    if(r.valor==='NA'){ nasHist++; }
+    if(r.valor==='NA' || r.valor<U.aprobatoria){ rep[r.materiaId]=(rep[r.materiaId]||0)+1; }
+  });
+  const reincide = Object.entries(rep).filter(([,c])=>c>=U.reincidencia).map(([id,c])=>({materia:matById[id], veces:c}));
+  const naTotal = nas + nasHist;
+  return {
+    reprobando, naTotal, reincide,
+    riesgo: reprobando.length >= U.materiasRiesgo,
+    alertaNA: naTotal >= U.naAlerta,
+    alertaRei: reincide.length > 0,
+    promGeneral: (()=>{ const v=MATERIAS.filter(m=>m.sem===a.sem).map(m=>promParciales(a.matricula,m.id).prom).filter(x=>x!==null); return v.length? v.reduce((s,x)=>s+x,0)/v.length : null; })()
+  };
+}
+function statsMateriaGrupo(mid, grupo){
+  const r = rosterDe(grupo); let rep=0, cap=0, tot=0;
+  r.forEach(a=>{ const {prom}=promParciales(a.matricula,mid); if(prom!==null){cap++; if(prom<S.umbral.aprobatoria) rep++;} tot++; });
+  return {rep, cap, tot, pct: cap? rep/cap : 0};
+}
+function avanceCaptura(){
+  let cap=0, tot=0;
+  ASIG.forEach(as=>{
+    rosterDe(as.grupo).forEach(a=>{
+      [1,2].forEach(p=>{ const r=getReg(a.matricula,as.materiaId,CICLO,p); if(r){tot++; if(r.estado==='capturado') cap++;} });
+    });
+  });
+  return {cap, tot, pct: tot? cap/tot : 0};
+}
+
+/* ---------- formato ---------- */
+function claseNota(v){
+  if(v===null||v===undefined) return 'g-pend';
+  if(v==='NA') return 'g-na';
+  if(v < S.umbral.aprobatoria) return 'g-rep';
+  if(v < 7) return 'g-rie';
+  return 'g-ok';
+}
+function fmtNota(r){
+  if(!r || r.estado!=='capturado' || r.valor===null) return '<span class="g g-pend">—</span>';
+  if(r.valor==='NA') return '<span class="g g-na">NA</span>';
+  return '<span class="g '+claseNota(r.valor)+'">'+(Number.isInteger(r.valor)? r.valor.toFixed(1) : r.valor.toFixed(1))+'</span>';
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function render(){
+  const app = el('app');
+  if(!S.rol){ app.innerHTML = vistaGate(); return; }
+  app.innerHTML = `
+    <header class="topbar">
+      <div class="crest">UAQ</div>
+      <div class="who">Escuela de Bachilleres<small>Tablero de seguimiento académico · Plan 2019</small></div>
+      <div class="spacer"></div>
+      <span class="chip-role">${esc(S.actor.nombre)}</span>
+      <button class="btn ghost small" data-act="salir">Cambiar de sesión</button>
+    </header>
+    <div class="band">${S.rol==='coordinacion'?'Vista de coordinación':'Vista de profesor'}
+      <span class="sim">· Prototipo con datos ficticios · Fecha simulada: 27 de octubre de 2026 · Ciclo ${CICLO}</span></div>
+    ${nav()}
+    <main>${cuerpo()}</main>
+    <button class="fab" data-act="comentar">Comentar esta vista</button>`;
+}
+
+function nav(){
+  const tabs = S.rol==='coordinacion'
+    ? [['panorama','Panorama'],['alumnos','Estudiantes'],['captura','Control de captura'],['calendario','Calendario'],['ajustes','Umbrales de alerta'],['config','Configuración'],['comentarios','Comentarios ('+S.comentarios.length+')'],['acerca','Acerca del prototipo']]
+    : [['misgrupos','Mis materias'],['calendario','Calendario'],['comentarios','Comentarios ('+S.comentarios.length+')'],['acerca','Acerca del prototipo']];
+  return '<nav class="tabs">'+tabs.map(([v,l])=>`<button data-vista="${v}" aria-current="${S.vista===v}">${l}</button>`).join('')+'</nav>';
+}
+
+function cuerpo(){
+  switch(S.vista){
+    case 'panorama': return vPanorama();
+    case 'alumnos': return vAlumnos();
+    case 'captura': return vControlCaptura();
+    case 'calendario': return vCalendario();
+    case 'ajustes': return vAjustes();
+    case 'config': return vConfig();
+    case 'comentarios': return vComentarios();
+    case 'acerca': return vAcerca();
+    case 'misgrupos': return vMisGrupos();
+    case 'capturar': return vCapturar();
+    default: return vPanorama();
+  }
+}
+
+/* ---------- portada de acceso ---------- */
+function vistaGate(){
+  return `<div class="gate"><div class="gate-card">
+    <div class="hd">
+      <div class="eyebrow" style="color:rgba(255,255,255,.8)">Universidad Autónoma de Querétaro</div>
+      <h1>Tablero de seguimiento académico</h1>
+      <p>Escuela de Bachilleres · Plan de Estudios 2019 · Prototipo para retroalimentación</p>
+    </div>
+    <div class="gate-b">
+      <p class="lead">En el sistema real el acceso se resuelve con la cuenta institucional: cada correo está en una tabla de personas autorizadas y sólo ve lo que su papel permite. Aquí la sesión se elige a mano para poder revisar las dos caras del tablero.</p>
+      <div class="pick">
+        ${COORD.map(c=>`<button data-login="coordinacion" data-id="${c.id}"><div class="r">${esc(c.rol)} — ve todo</div><div class="d">${esc(c.correo)} · calificaciones de los seis grupos, alertas y control de captura</div></button>`).join('')}
+        ${['p1','p3','p6'].map(id=>{const p=PROFES.find(x=>x.id===id); const n=asigDe(id).length;
+          return `<button class="prof" data-login="profesor" data-id="${id}"><div class="r">${esc(p.nombre)} — captura</div><div class="d">${esc(p.correo)} · ${n} materia${n===1?'':'s'} asignada${n===1?'':'s'} · no ve calificaciones de otros profesores</div></button>`;}).join('')}
+      </div>
+      <div class="sep"></div>
+      <p class="hint">Los 120 estudiantes, los profesores y todas las calificaciones son inventados. Nada se guarda: al recargar la página el prototipo vuelve a su estado inicial.</p>
+    </div></div></div>`;
+}
+
+/* ---------- COORDINACIÓN: panorama ---------- */
+function vPanorama(){
+  const av = avanceCaptura();
+  const diags = ALUMNOS.map(a=>({a, d:diagnostico(a)}));
+  const riesgo = diags.filter(x=>x.d.riesgo);
+  const na = diags.filter(x=>x.d.alertaNA);
+  const rei = diags.filter(x=>x.d.alertaRei);
+  const prioridad = diags.filter(x=>x.d.riesgo||x.d.alertaRei)
+    .sort((x,y)=> (y.d.reincide.length*3+y.d.reprobando.length) - (x.d.reincide.length*3+x.d.reprobando.length)).slice(0,8);
+
+  return `
+  <div class="eyebrow">Ciclo ${CICLO} · corte al 27 de octubre</div>
+  <h2 style="font-size:24px">Panorama general</h2>
+  <p class="lead">Estado de la captura y estudiantes que la coordinación debería mirar esta semana. Los criterios de alerta se ajustan en la pestaña de umbrales.</p>
+
+  <section class="block"><div class="kpis">
+    <div class="kpi cap"><div class="v">${Math.round(av.pct*100)}%</div><div class="l">Captura de los parciales cerrados<br><span class="hint">${av.cap} de ${av.tot} registros</span></div></div>
+    <div class="kpi rep"><div class="v">${riesgo.length}</div><div class="l">Estudiantes con ${S.umbral.materiasRiesgo}+ materias reprobando</div></div>
+    <div class="kpi rie"><div class="v">${rei.length}</div><div class="l">Con una materia reprobada ${S.umbral.reincidencia} veces o más</div></div>
+    <div class="kpi"><div class="v">${na.length}</div><div class="l">Con ${S.umbral.naAlerta}+ NA acumulados</div></div>
+    <div class="kpi ok"><div class="v">${ALUMNOS.length}</div><div class="l">Estudiantes inscritos (6 grupos)</div></div>
+  </div></section>
+
+  <section class="block">
+    <div class="panel"><div class="panel-h"><h3>Atención prioritaria</h3><span class="hint">Ordenado por gravedad. Da clic para abrir el expediente.</span></div>
+    <div class="panel-b">
+      ${prioridad.length? prioridad.map(({a,d})=>`
+        <div class="alerta ${d.alertaRei?'rei':''}">
+          <div class="txt">
+            <b>${esc(a.nombre)}</b> · ${a.grupo} · matrícula <span class="num">${a.matricula}</span>
+            <div class="met">
+              ${d.reprobando.length? d.reprobando.length+' materia'+(d.reprobando.length===1?'':'s')+' por debajo de '+S.umbral.aprobatoria+': '+d.reprobando.map(r=>esc(r.materia.nombre)+' ('+r.prom.toFixed(1)+')').join(' · ') : 'Sin materias reprobadas en el ciclo'}
+              ${d.alertaRei? '<br><b>Reincidencia:</b> '+d.reincide.map(r=>esc(r.materia.nombre)+' — '+r.veces+' intentos no acreditados').join(' · ') : ''}
+              ${d.naTotal? '<br>NA acumulados: <span class="num">'+d.naTotal+'</span>' : ''}
+            </div>
+          </div>
+          <button class="btn ghost small" data-alumno="${a.matricula}">Ver expediente</button>
+        </div>`).join('') : '<p class="hint">Ningún estudiante cruza los umbrales configurados.</p>'}
+    </div></div>
+  </section>
+
+  <section class="block">
+    <div class="eyebrow">Mapa curricular en vivo</div>
+    <h3 style="font-size:18px;margin-bottom:4px">La tira de materias como termómetro</h3>
+    <p class="lead">Cada tarjeta es una materia del Plan 2019. La barra muestra qué proporción del grupo va por debajo de ${S.umbral.aprobatoria} en el promedio de parciales capturados.</p>
+    <div class="tira">
+      ${GRUPOS.map(g=>`<div class="tira-col"><h4>${g.sem}° semestre · ${g.id}</h4>
+        ${MATERIAS.filter(m=>m.sem===g.sem).map(m=>{
+          const s = statsMateriaGrupo(m.id,g.id);
+          const col = s.pct>=0.3?'var(--rep)': s.pct>=0.15?'var(--riesgo)':'var(--ok)';
+          return `<div class="mat e-${m.eje}" title="${esc(m.nombre)} — ${s.rep} de ${s.cap} por debajo de ${S.umbral.aprobatoria}">
+            <div class="n">${esc(m.nombre)}</div>
+            <div class="meter"><i style="width:${Math.round(s.pct*100)}%;background:${col}"></i></div>
+            <div class="pct"><span class="num">${s.rep}/${s.cap}</span><span>${esc((profeDe(m.id,g.id)||{nombre:''}).nombre.split(' ').slice(1,3).join(' '))}</span></div>
+          </div>`;}).join('')}
+      </div>`).join('')}
+    </div>
+    <div class="leyenda">${Object.entries(EJES).map(([k,v])=>`<span><i class="dot" style="background:${v.c}"></i>${esc(v.n)}</span>`).join('')}</div>
+  </section>`;
+}
+
+/* ---------- COORDINACIÓN: estudiantes ---------- */
+function vAlumnos(){
+  const f = S.filtro;
+  let lista = ALUMNOS.map(a=>({a,d:diagnostico(a)}));
+  if(f.grupo!=='todos') lista = lista.filter(x=>x.a.grupo===f.grupo);
+  if(f.alerta==='riesgo') lista = lista.filter(x=>x.d.riesgo);
+  if(f.alerta==='na') lista = lista.filter(x=>x.d.alertaNA);
+  if(f.alerta==='rei') lista = lista.filter(x=>x.d.alertaRei);
+  if(f.q) lista = lista.filter(x=>(x.a.nombre+' '+x.a.matricula).toLowerCase().includes(f.q.toLowerCase()));
+
+  return `
+  <div class="eyebrow">Padrón</div>
+  <h2 style="font-size:24px">Estudiantes</h2>
+  <p class="lead">Promedio de los parciales capturados en el ciclo, alertas activas y acceso al expediente completo.</p>
+  <div class="panel"><div class="panel-h">
+    <label class="field">Grupo<select data-filtro="grupo">
+      <option value="todos">Todos</option>${GRUPOS.map(g=>`<option value="${g.id}" ${f.grupo===g.id?'selected':''}>${g.id} — ${g.sem}° semestre</option>`).join('')}</select></label>
+    <label class="field">Alerta<select data-filtro="alerta">
+      <option value="todas" ${f.alerta==='todas'?'selected':''}>Todas</option>
+      <option value="riesgo" ${f.alerta==='riesgo'?'selected':''}>Materias reprobando</option>
+      <option value="na" ${f.alerta==='na'?'selected':''}>NA acumulados</option>
+      <option value="rei" ${f.alerta==='rei'?'selected':''}>Reincidencia</option></select></label>
+    <label class="field">Buscar<input type="search" data-filtro="q" value="${esc(f.q)}" placeholder="Nombre o matrícula"></label>
+    <div class="spacer" style="flex:1"></div><span class="hint">${lista.length} estudiante${lista.length===1?'':'s'}</span>
+  </div>
+  <div class="scrollx"><table>
+    <thead><tr><th>Matrícula</th><th>Estudiante</th><th>Grupo</th><th>Promedio del ciclo</th><th>Materias abajo de ${S.umbral.aprobatoria}</th><th>NA</th><th>Alertas</th><th></th></tr></thead>
+    <tbody>${lista.map(({a,d})=>`<tr>
+      <td class="num">${a.matricula}</td>
+      <td>${esc(a.nombre)}</td>
+      <td>${a.grupo}</td>
+      <td><span class="g ${claseNota(d.promGeneral)}">${d.promGeneral!==null?d.promGeneral.toFixed(1):'—'}</span></td>
+      <td class="num">${d.reprobando.length}</td>
+      <td class="num">${d.naTotal}</td>
+      <td>${d.riesgo?'<span class="tag t-rep">Riesgo</span> ':''}${d.alertaNA?'<span class="tag t-na">NA</span> ':''}${d.alertaRei?'<span class="tag t-rie">Reincide</span>':''}${(!d.riesgo&&!d.alertaNA&&!d.alertaRei)?'<span class="tag t-ok">Sin alerta</span>':''}</td>
+      <td><button class="btn ghost small" data-alumno="${a.matricula}">Expediente</button></td>
+    </tr>`).join('')}</tbody></table></div></div>`;
+}
+
+/* ---------- COORDINACIÓN: control de captura ---------- */
+function vControlCaptura(){
+  const filas = [];
+  ASIG.forEach(as=>{
+    const roster = rosterDe(as.grupo);
+    [1,2].forEach(p=>{
+      const cap = roster.filter(a=>{const r=getReg(a.matricula,as.materiaId,CICLO,p); return r&&r.estado==='capturado';}).length;
+      if(cap < roster.length) filas.push({as, p, cap, tot:roster.length});
+    });
+  });
+  filas.sort((a,b)=> a.p-b.p || a.as.grupo.localeCompare(b.as.grupo));
+  return `
+  <div class="eyebrow">Seguimiento administrativo</div>
+  <h2 style="font-size:24px">Control de captura</h2>
+  <p class="lead">Materias con parciales ya vencidos e incompletos. En el sistema real, el botón envía un recordatorio automático al correo institucional del profesor.</p>
+  ${filas.length? `<div class="panel"><div class="scrollx"><table>
+    <thead><tr><th>Parcial</th><th>Materia</th><th>Grupo</th><th>Profesor</th><th>Avance</th><th>Venció</th><th></th></tr></thead>
+    <tbody>${filas.map(f=>{
+      const m = matById[f.as.materiaId]; const pr = PROFES.find(p=>p.id===f.as.profesorId);
+      const cal = CALENDARIO.find(c=>c.parcial===f.p);
+      return `<tr><td>${f.p}°</td><td>${esc(m.nombre)}</td><td>${f.as.grupo}</td><td>${esc(pr.nombre)}</td>
+      <td><span class="num">${f.cap}/${f.tot}</span> <span class="tag ${f.cap===0?'t-rep':'t-rie'}">${f.cap===0?'Sin capturar':'Incompleta'}</span></td>
+      <td class="hint">${cal.limite}</td>
+      <td><button class="btn ghost small" data-recordar="${esc(pr.correo)}">Enviar recordatorio</button></td></tr>`;}).join('')}
+    </tbody></table></div></div>`
+   : '<div class="panel"><div class="panel-b"><p class="hint">Todos los parciales vencidos están completos.</p></div></div>'}`;
+}
+
+/* ---------- calendario ---------- */
+function vCalendario(){
+  return `
+  <div class="eyebrow">Ciclo ${CICLO}</div>
+  <h2 style="font-size:24px">Fechas de captura</h2>
+  <p class="lead">El calendario lo edita la coordinación una vez por ciclo. De ahí salen los avisos: uno al abrir la ventana, otro tres días antes del cierre y uno el mismo día del vencimiento, sólo a quien todavía debe.</p>
+  <div class="panel"><div class="scrollx"><table>
+    <thead><tr><th>Periodo</th><th>Se abre</th><th>Cierra</th><th>Estado</th><th>Regla de captura</th></tr></thead>
+    <tbody>${CALENDARIO.map(c=>{
+      const estado = c.cerrado ? '<span class="tag t-pend">Cerrado</span>' : (c.parcial===3? '<span class="tag t-rie">Próximo</span>':'<span class="tag t-ok">Abierto después</span>');
+      return `<tr><td><b>${esc(c.etiqueta)}</b></td><td>${c.apertura}</td><td>${c.limite}</td><td>${estado}</td>
+      <td class="hint">${c.parcial==='F'?'Entero de 0 a 10, o NA':'De 0 a 10, un decimal permitido, o NA'}</td></tr>`;}).join('')}
+    </tbody></table></div></div>
+  <p class="hint" style="margin-top:12px">Después del cierre la captura se bloquea y cualquier cambio requiere una solicitud a coordinación, que queda registrada con autor y fecha.</p>`;
+}
+
+/* ---------- umbrales ---------- */
+function vAjustes(){
+  const U=S.umbral;
+  return `
+  <div class="eyebrow">Parámetros</div>
+  <h2 style="font-size:24px">Umbrales de alerta</h2>
+  <p class="lead">Los criterios no vienen fijos de fábrica: la coordinación decide qué cuenta como riesgo. Al cambiarlos, todos los tableros se recalculan de inmediato.</p>
+  <div class="panel"><div class="panel-b">
+    <div class="grid2">
+      <label class="field">Calificación mínima aprobatoria
+        <input type="number" step="0.1" min="0" max="10" value="${U.aprobatoria}" data-umbral="aprobatoria"></label>
+      <label class="field">Materias reprobando que disparan la alerta de riesgo
+        <input type="number" step="1" min="1" max="8" value="${U.materiasRiesgo}" data-umbral="materiasRiesgo"></label>
+      <label class="field">NA acumulados que disparan alerta
+        <input type="number" step="1" min="1" max="10" value="${U.naAlerta}" data-umbral="naAlerta"></label>
+      <label class="field">Intentos no acreditados de una misma materia
+        <input type="number" step="1" min="2" max="4" value="${U.reincidencia}" data-umbral="reincidencia"></label>
+    </div>
+    <div class="sep"></div>
+    <p class="hint">Nota de diseño: el promedio que dispara la alerta usa sólo los parciales ya capturados. Un estudiante con un único parcial malo aparece en riesgo desde septiembre, que es justamente cuando sirve intervenir; si se prefiere esperar a dos parciales, es un ajuste de una línea.</p>
+  </div></div>`;
+}
+
+/* ---------- comentarios ---------- */
+function vComentarios(){
+  const cs = S.comentarios.slice().reverse();
+  return `
+  <div class="eyebrow">Retroalimentación sobre el tablero</div>
+  <h2 style="font-size:24px">Comentarios</h2>
+  <p class="lead">Observaciones sobre cómo debería funcionar el tablero. No se mezclan con las notas sobre estudiantes, que viven en el expediente de cada quien.</p>
+  <div class="aviso">${CONEXION.url
+    ? 'Los comentarios se envían a la hoja de cálculo de Drive en cuanto se escriben. Si el envío falla quedan marcados como pendientes y se reintentan con el botón de enviar.'
+    : (PERSISTE
+    ? 'Los comentarios quedan guardados en este navegador y esta computadora: al volver a abrir el archivo siguen ahí. No viajan solos a ningún lado. Para que lleguen a quien armó el tablero hay que descargar el respaldo y enviarlo.'
+    : 'Este visor no permite guardar nada entre sesiones: al cerrar la pestaña los comentarios se pierden. Conviene descargar el respaldo antes de salir, o abrir el archivo directamente desde la computadora en lugar de este visor.')}</div>
+  <div class="panel"><div class="panel-h"><h3>${cs.length} comentario${cs.length===1?'':'s'}</h3><div style="flex:1"></div>
+    <button class="btn ghost small" data-act="copiar-com">Copiar todos</button>
+    <button class="btn ghost small" data-act="descargar-com">Descargar .txt</button>
+    <button class="btn ghost small" data-act="respaldo">Descargar respaldo</button>
+    <button class="btn small" data-act="sincronizar">Enviar a la hoja${pendientes().length?' ('+pendientes().length+')':''}</button>
+    <button class="btn ghost small" data-act="traer-hoja">Traer de la hoja</button></div>
+    <div class="panel-b">
+      ${cs.length? cs.map(c=>`<div class="alerta" style="border-left-color:var(--uaq)"><div class="txt">
+        <b>${esc(c.autor)}</b> <span class="hint">· ${esc(c.rol)} · pantalla “${esc(c.vista)}” · ${esc(c.hora)}</span>
+        ${c.enviado? '<span class="tag t-ok">En la hoja</span>' : (CONEXION.url? '<span class="tag t-rie">Pendiente de enviar</span>' : '<span class="tag t-pend">Sólo en este equipo</span>')}
+        <div style="margin-top:5px">${esc(c.texto)}</div></div></div>`).join('')
+        : '<p class="hint">Aún no hay comentarios. El botón inferior derecho abre el formulario desde cualquier pantalla.</p>'}
+    </div></div>`;
+}
+
+/* ---------- PROFESOR: mis materias ---------- */
+function vMisGrupos(){
+  const mias = asigDe(S.actor.id);
+  return `
+  <div class="eyebrow">Ciclo ${CICLO}</div>
+  <h2 style="font-size:24px">Mis materias</h2>
+  <p class="lead">Sólo aparecen las materias asignadas. Las calificaciones de otros profesores no son visibles desde esta sesión.</p>
+  <div class="panel"><div class="scrollx"><table>
+    <thead><tr><th>Materia</th><th>Grupo</th><th>Inscritos</th><th>1er parcial</th><th>2° parcial</th><th>3er parcial</th><th>Final</th><th></th></tr></thead>
+    <tbody>${mias.map(as=>{
+      const m = matById[as.materiaId]; const roster = rosterDe(as.grupo);
+      const est = p=>{
+        const cap = roster.filter(a=>{const r=getReg(a.matricula,as.materiaId,CICLO,p); return r&&r.estado==='capturado';}).length;
+        const cal = CALENDARIO.find(c=>c.parcial===p);
+        if(cap===roster.length) return '<span class="tag t-ok">Completo</span>';
+        if(cal.cerrado) return '<span class="tag t-rep">Vencido '+cap+'/'+roster.length+'</span>';
+        return '<span class="tag t-pend">Abre '+cal.apertura+'</span>';
+      };
+      return `<tr><td><b>${esc(m.nombre)}</b><br><span class="hint">${esc(EJES[m.eje].n)}</span></td>
+        <td>${as.grupo}</td><td class="num">${roster.length}</td>
+        <td>${est(1)}</td><td>${est(2)}</td><td>${est(3)}</td><td>${est('F')}</td>
+        <td><button class="btn small" data-capturar="${as.materiaId}|${as.grupo}">Capturar</button></td></tr>`;}).join('')}
+    </tbody></table></div></div>`;
+}
+
+/* ---------- PROFESOR: pantalla de captura ---------- */
+function vCapturar(){
+  const {materiaId, grupo, parcial} = S.cap;
+  const m = matById[materiaId], roster = rosterDe(grupo);
+  const cal = CALENDARIO.find(c=>c.parcial===parcial);
+  const esFinal = parcial==='F';
+  return `
+  <button class="btn ghost small" data-vista="misgrupos">← Volver a mis materias</button>
+  <div class="eyebrow" style="margin-top:14px">${esc(EJES[m.eje].n)}</div>
+  <h2 style="font-size:24px">${esc(m.nombre)} · Grupo ${grupo}</h2>
+  <p class="lead">Lista en orden alfabético por apellido. ${esFinal? 'La calificación final admite sólo números enteros de 0 a 10, o NA.' : 'Los parciales admiten un decimal, de 0 a 10, o NA si el estudiante no presentó.'}</p>
+
+  <div class="panel" style="margin-bottom:16px"><div class="panel-h">
+    <label class="field">Periodo<select data-parcial>
+      ${CALENDARIO.map(c=>`<option value="${c.parcial}" ${String(c.parcial)===String(parcial)?'selected':''}>${c.etiqueta}</option>`).join('')}</select></label>
+    <div><div class="hint">Cierre</div><div><b>${cal.limite}</b></div></div>
+    <div style="flex:1"></div>
+    <button class="btn ghost" data-act="pegar">Pegar una lista</button>
+    <button class="btn" data-act="guardar">Guardar calificaciones</button>
+  </div>
+  <div class="scrollx"><table>
+    <thead><tr><th style="width:44px">#</th><th>Matrícula</th><th>Estudiante</th><th style="width:110px">Calificación</th><th>Estado</th><th>Nota para coordinación</th></tr></thead>
+    <tbody>${roster.map((a,i)=>{
+      const r = getReg(a.matricula, materiaId, CICLO, parcial);
+      const val = S.borrador[a.matricula] !== undefined ? S.borrador[a.matricula] : (r && r.estado==='capturado' ? r.valor : '');
+      const nota = r ? r.nota : '';
+      return `<tr>
+        <td class="num" style="color:var(--ink-3)">${i+1}</td>
+        <td class="num">${a.matricula}</td>
+        <td>${esc(a.nombre)}</td>
+        <td><input class="cap-input ${val==='NA'?'na':''}" type="text" inputmode="decimal" value="${val===null?'':esc(String(val))}" data-cap="${a.matricula}" aria-label="Calificación de ${esc(a.nombre)}"></td>
+        <td>${r && r.estado==='capturado' ? '<span class="tag t-ok">Guardado</span>' : '<span class="tag t-pend">Sin capturar</span>'}</td>
+        <td><button class="note-btn ${nota?'has':''}" data-nota="${a.matricula}">${nota? 'Nota escrita' : 'Agregar nota'}</button></td>
+      </tr>`;}).join('')}
+    </tbody></table></div></div>
+  <p class="hint">Al guardar, el tablero avisa si algún valor quedó fuera de rango y no acepta la captura hasta corregirlo. Nada se envía por correo: la coordinación lo ve al instante en su panel.</p>`;
+}
+
+/* ---------- acerca ---------- */
+function vAcerca(){
+  return `
+  <div class="eyebrow">Documentación</div>
+  <h2 style="font-size:24px">Acerca de este prototipo</h2>
+  <p class="lead">Qué es, qué no es todavía, y las decisiones que se tomaron sin consultar. Cada una de ellas es discutible y por eso está escrita aquí.</p>
+
+  <section class="block"><div class="panel"><div class="panel-h"><h3>Decisiones interpretativas</h3></div><div class="panel-b">
+  <ul class="plain">
+    <li><b>NA se distingue de cero y de “sin capturar”.</b> Son tres realidades distintas: pérdida de derecho, desempeño nulo y omisión del profesor. Sin esa separación, la alerta de NA acumulados mezcla estudiantes en riesgo con materias que nadie subió.</li>
+    <li><b>Los parciales también aceptan NA.</b> El encargo lo pedía sólo para la final, pero un estudiante que no se presenta a un parcial necesita una marca que no sea cero. Si la normativa lo impide, se retira.</li>
+    <li><b>La final la captura el profesor, no la calcula el sistema.</b> El tablero muestra el promedio de parciales como referencia, sin imponerlo, porque cada materia pondera distinto.</li>
+    <li><b>La llave del sistema es la matrícula, nunca el nombre.</b> Todo el pegado se verifica contra ella.</li>
+    <li><b>El modelo de datos es largo:</b> un registro por estudiante, materia, ciclo y parcial. Es lo que permite preguntar por la trayectoria de alguien a lo largo de seis semestres sin rehacer la base.</li>
+    <li><b>Fecha simulada: 27 de octubre de 2026,</b> con dos parciales cerrados y uno por abrir, para que los recordatorios y el control de captura tengan algo que mostrar.</li>
+    <li><b>Los umbrales de alerta son configurables</b> y arrancan en 6 de mínima aprobatoria, 2 materias para riesgo, 2 NA y 2 intentos no acreditados.</li>
+    <li><b>Los comentarios sobre el tablero y las notas sobre estudiantes son cosas separadas.</b> Las segundas son cuasi-expediente y llevan autor y fecha.</li>
+  </ul></div></div></section>
+
+  <section class="block"><div class="panel"><div class="panel-h"><h3>Lo que falta para que sea real</h3></div><div class="panel-b">
+  <ul class="plain">
+    <li>Sustituir el selector de sesión por autenticación con cuenta institucional. La tabla de personas autorizadas ya existe en la pestaña de configuración; lo que falta es que el sistema verifique de verdad quién entra, en lugar de creerle al botón.</li>
+    <li>Los comentarios de esta prueba se guardan sólo en el navegador donde se escriben. Para que lleguen a quien armó el tablero hay que descargar el respaldo desde la pestaña de comentarios y enviarlo por correo.</li>
+    <li>Migrar los datos a una hoja de cálculo institucional con una aplicación web intermedia que corra con permisos del propietario: los profesores nunca tocan la hoja, sólo el formulario.</li>
+    <li>Conectar los recordatorios al correo institucional y al calendario del ciclo.</li>
+    <li>Cargar el padrón real desde el sistema escolar en lugar de teclear listas.</li>
+    <li>Acordar con la coordinación el aviso de privacidad y quién conserva los comentarios sobre estudiantes, por cuánto tiempo y con qué acceso.</li>
+    <li>Definir qué ocurre con estudiantes irregulares que cursan materias de dos semestres a la vez: el modelo de datos ya lo soporta, la interfaz aún no.</li>
+  </ul></div></div></section>
+
+  <section class="block"><div class="panel"><div class="panel-h"><h3>Cómo probarlo</h3></div><div class="panel-b">
+  <ul class="plain">
+    <li>Entrar como profesora, abrir una materia, capturar tres o cuatro calificaciones a mano y guardar.</li>
+    <li>Volver a entrar y probar el pegado: copiar una columna de números desde Excel y observar la verificación previa antes de confirmar.</li>
+    <li>Entrar como coordinación y ver cómo cambian el panorama y las alertas.</li>
+    <li>Mover los umbrales y observar cuántos estudiantes entran o salen de la lista de atención.</li>
+    <li>Entrar a Configuración y probar lo que hará la secretaría cada agosto: dar de alta un profesor, reasignar una materia, pegar una lista de estudiantes, mover las fechas de captura.</li>
+    <li>Dejar comentarios con el botón inferior derecho en cada pantalla que merezca cambios, y descargar el respaldo antes de cerrar.</li>
+  </ul></div></div></section>`;
+}
+
+
+/* ---------- CONFIGURACIÓN (coordinación y secretaría) ---------- */
+function vConfig(){
+  const tab = S.configTab;
+  const tabs = [['profesores','Profesores'],['asignaciones','Asignaciones'],['estudiantes','Estudiantes'],
+                ['periodos','Periodos de captura'],['accesos','Quién ve qué'],['bitacora','Bitácora ('+BITACORA.length+')']];
+  const cuerpos = {profesores:cfgProfes, asignaciones:cfgAsig, estudiantes:cfgAlumnos,
+                   periodos:cfgPeriodos, accesos:cfgAccesos, bitacora:cfgBitacora};
+  return `
+  <div class="eyebrow">Administración del ciclo</div>
+  <h2 style="font-size:24px">Configuración</h2>
+  <p class="lead">Lo que la coordinación y la secretaría dan de alta al inicio de cada ciclo: quién enseña qué, quién está inscrito, cuándo se captura y quién puede ver resultados. Cada cambio queda anotado en la bitácora con autor y fecha.</p>
+  <div class="subtabs">${tabs.map(([k,l])=>`<button data-ctab="${k}" aria-current="${tab===k}">${l}</button>`).join('')}</div>
+  ${(cuerpos[tab]||cfgProfes)()}`;
+}
+
+function selGrupo(){
+  return `<label class="field">Grupo<select data-cfggrupo>${GRUPOS.map(x=>`<option value="${x.id}" ${S.cfgGrupo===x.id?'selected':''}>${x.id} — ${x.sem}° semestre</option>`).join('')}</select></label>`;
+}
+
+function cfgProfes(){
+  return `<div class="panel"><div class="panel-h"><h3>Profesores con permiso de captura</h3>
+    <div style="flex:1"></div><button class="btn small" data-act="nuevo-profe">Agregar profesor</button></div>
+  <div class="scrollx"><table><thead><tr><th>Nombre</th><th>Correo institucional</th><th>Materias</th><th>Acceso</th><th></th></tr></thead>
+  <tbody>${PROFES.map(pr=>`<tr>
+    <td>${esc(pr.nombre)}</td><td class="hint">${esc(pr.correo)}</td><td class="num">${asigDe(pr.id).length}</td>
+    <td>${pr.activo?'<span class="tag t-ok">Activo</span>':'<span class="tag t-pend">Suspendido</span>'}</td>
+    <td><button class="btn ghost small" data-editar-profe="${pr.id}">Editar</button>
+        <button class="btn ghost small" data-toggle-profe="${pr.id}">${pr.activo?'Suspender':'Reactivar'}</button></td>
+  </tr>`).join('')}</tbody></table></div></div>
+  <p class="hint" style="margin-top:10px">Suspender no borra nada: las calificaciones que ya capturó se conservan con su nombre, sólo deja de poder entrar. Es lo que se hace al cerrar el ciclo con quien deja de dar clase.</p>`;
+}
+
+function cfgAsig(){
+  const g = S.cfgGrupo;
+  const filas = ASIG.filter(a=>a.grupo===g);
+  const sin = filas.filter(a=>{const pr=PROFES.find(x=>x.id===a.profesorId); return !pr||!pr.activo;}).length;
+  return `<div class="panel"><div class="panel-h">${selGrupo()}<div style="flex:1"></div>
+    <span class="hint">${filas.length} materias · un profesor por materia y grupo</span></div>
+  ${sin? `<div class="panel-b" style="padding-bottom:0"><div class="aviso">${sin} materia${sin===1?'':'s'} de este grupo está${sin===1?'':'n'} a cargo de alguien suspendido. Nadie podrá capturar hasta reasignarla.</div></div>`:''}
+  <div class="scrollx"><table><thead><tr><th>Materia</th><th>Eje de formación</th><th>Profesor asignado</th></tr></thead>
+  <tbody>${filas.map(a=>{const m=matById[a.materiaId];
+    return `<tr><td style="border-left:5px solid ${EJES[m.eje].c};padding-left:9px">${esc(m.nombre)}</td>
+    <td class="hint">${esc(EJES[m.eje].n)}</td>
+    <td><select data-asig="${a.materiaId}|${a.grupo}">${PROFES.filter(pr=>pr.activo||pr.id===a.profesorId).map(pr=>`<option value="${pr.id}" ${pr.id===a.profesorId?'selected':''}>${esc(pr.nombre)}${pr.activo?'':' (suspendido)'}</option>`).join('')}</select></td></tr>`;}).join('')}
+  </tbody></table></div></div>`;
+}
+
+function cfgAlumnos(){
+  const g = S.cfgGrupo;
+  const lista = ALUMNOS.filter(a=>a.grupo===g);
+  return `<div class="panel"><div class="panel-h">${selGrupo()}<div style="flex:1"></div>
+    <span class="hint">${lista.filter(a=>a.estado!=='baja').length} inscritos</span>
+    <button class="btn ghost small" data-act="importar-alumnos">Pegar lista completa</button>
+    <button class="btn small" data-act="nuevo-alumno">Agregar estudiante</button></div>
+  <div class="scrollx"><table><thead><tr><th>Matrícula</th><th>Estudiante</th><th>Grupo</th><th>Estado</th><th></th></tr></thead>
+  <tbody>${lista.map(a=>`<tr>
+    <td class="num">${a.matricula}</td><td>${esc(a.nombre)}</td>
+    <td><select data-mover="${a.matricula}">${GRUPOS.map(x=>`<option value="${x.id}" ${a.grupo===x.id?'selected':''}>${x.id}</option>`).join('')}</select></td>
+    <td>${a.estado==='baja'?'<span class="tag t-rep">Baja</span>':'<span class="tag t-ok">Inscrito</span>'}</td>
+    <td><button class="btn ghost small" data-baja="${a.matricula}">${a.estado==='baja'?'Reinscribir':'Dar de baja'}</button></td>
+  </tr>`).join('')}</tbody></table></div></div>
+  <p class="hint" style="margin-top:10px">Dar de baja conserva el historial y saca a la persona de las listas de captura, sin borrar las calificaciones ya registradas. Cambiar de grupo reordena las dos listas alfabéticas involucradas, así que conviene hacerlo antes de que abra un parcial y no a la mitad.</p>`;
+}
+
+function cfgPeriodos(){
+  return `<div class="panel"><div class="panel-h"><h3>Ventanas de captura del ciclo ${CICLO}</h3>
+    <div style="flex:1"></div><span class="hint">De estas fechas salen los avisos y el bloqueo.</span></div>
+  <div class="scrollx"><table><thead><tr><th>Periodo</th><th>Se abre</th><th>Cierra</th><th>Estado</th><th>Qué acepta</th></tr></thead>
+  <tbody>${CALENDARIO.map((c,i)=>`<tr>
+    <td><b>${esc(c.etiqueta)}</b></td>
+    <td><input type="text" size="12" value="${esc(c.apertura)}" data-cal="${i}|apertura" aria-label="Apertura"></td>
+    <td><input type="text" size="12" value="${esc(c.limite)}" data-cal="${i}|limite" aria-label="Cierre"></td>
+    <td><select data-cal="${i}|cerrado"><option value="no" ${!c.cerrado?'selected':''}>Abierto</option><option value="si" ${c.cerrado?'selected':''}>Cerrado</option></select></td>
+    <td class="hint">${c.parcial==='F'?'Entero de 0 a 10, o NA':'0 a 10 con un decimal, o NA'}</td></tr>`).join('')}
+  </tbody></table></div>
+  <div class="panel-b" style="border-top:1px solid var(--line)"><div class="grid2">
+    <label class="field">Aviso anticipado (días antes del cierre)
+      <input type="number" min="0" max="10" value="${S.aviso.previo}" data-aviso="previo"></label>
+    <label class="field">Recordatorio el mismo día del cierre
+      <select data-aviso="mismodia"><option value="si" ${S.aviso.mismodia==='si'?'selected':''}>Sí, sólo a quien deba</option><option value="no" ${S.aviso.mismodia==='no'?'selected':''}>No</option></select></label>
+  </div>
+  <p class="hint" style="margin-top:12px">Cerrar un periodo bloquea la captura. Reabrirlo es una decisión de coordinación y queda en la bitácora, que es justamente lo que protege a la secretaría cuando alguien pide un cambio de calificación fuera de tiempo.</p>
+  </div></div>`;
+}
+
+function cfgAccesos(){
+  return `<div class="panel"><div class="panel-h"><h3>Quién ve resultados completos</h3>
+    <div style="flex:1"></div><button class="btn small" data-act="nuevo-acceso">Agregar persona</button></div>
+  <div class="scrollx"><table><thead><tr><th>Persona</th><th>Correo institucional</th><th>Papel</th><th>Puede</th><th></th></tr></thead>
+  <tbody>${COORD.map(c=>`<tr><td>${esc(c.nombre)}</td><td class="hint">${esc(c.correo)}</td><td>${esc(c.rol)}</td>
+    <td class="hint">Ver los seis grupos, configurar el ciclo, exportar</td>
+    <td><button class="btn ghost small" data-quitar-acceso="${c.id}">Quitar</button></td></tr>`).join('')}
+  </tbody></table></div></div>
+  <p class="hint" style="margin-top:10px">Los profesores no aparecen en esta lista porque su permiso es de otra naturaleza: capturan en sus materias y no ven nada más. Se administran en la primera pestaña.</p>`;
+}
+
+function cfgBitacora(){
+  const b = BITACORA.slice().reverse();
+  return `<div class="panel"><div class="panel-h"><h3>Bitácora de cambios</h3><div style="flex:1"></div>
+    <button class="btn ghost small" data-act="descargar-bita">Descargar .txt</button></div>
+  ${b.length? `<div class="scrollx"><table><thead><tr><th>Cuándo</th><th>Quién</th><th>Qué hizo</th><th>Detalle</th></tr></thead>
+  <tbody>${b.map(x=>`<tr><td class="hint">${esc(x.hora)}</td><td>${esc(x.autor)}</td><td>${esc(x.accion)}</td><td class="hint">${esc(x.detalle)}</td></tr>`).join('')}</tbody></table></div>`
+   : '<div class="panel-b"><p class="hint">Sin movimientos todavía. Cualquier alta, baja, reasignación o cambio de fechas aparecerá aquí.</p></div>'}</div>`;
+}
+
+/* ---------- modales de configuración ---------- */
+function modalProfe(id){
+  const pr = id? PROFES.find(x=>x.id===id) : null;
+  return `<div class="modal-bg" data-close><div class="modal" style="max-width:540px" role="dialog">
+    <div class="modal-h"><div><div class="eyebrow">Profesores</div><h3 style="font-size:18px">${pr?'Editar profesor':'Agregar profesor'}</h3></div><button class="x" data-close-btn>×</button></div>
+    <div class="modal-b"><div class="grid2">
+      <label class="field">Nombre como aparece en actas<input type="text" id="pf-nom" value="${pr?esc(pr.nombre):''}" placeholder="Mtra. Nombre Apellido Apellido"></label>
+      <label class="field">Correo institucional<input type="text" id="pf-cor" value="${pr?esc(pr.correo):''}" placeholder="nombre.apellido@uaq.mx"></label>
+    </div>
+    <p class="hint" style="margin-top:12px">El correo es la llave de acceso: quien entre con esa cuenta verá sólo sus materias. Cambiarlo aquí cambia a quién le llegan los recordatorios.</p></div>
+    <div class="modal-f"><button class="btn ghost" data-close-btn>Cancelar</button>
+      <button class="btn" data-act="guardar-profe" data-pid="${id||''}">Guardar</button></div>
+  </div></div>`;
+}
+
+function modalAlumnoNuevo(){
+  return `<div class="modal-bg" data-close><div class="modal" style="max-width:560px" role="dialog">
+    <div class="modal-h"><div><div class="eyebrow">Padrón</div><h3 style="font-size:18px">Agregar estudiante</h3></div><button class="x" data-close-btn>×</button></div>
+    <div class="modal-b"><div class="grid2">
+      <label class="field">Matrícula<input type="text" id="al-mat" inputmode="numeric" placeholder="300123"></label>
+      <label class="field">Grupo<select id="al-gru">${GRUPOS.map(g=>`<option value="${g.id}" ${S.cfgGrupo===g.id?'selected':''}>${g.id} — ${g.sem}° semestre</option>`).join('')}</select></label>
+    </div>
+    <label class="field" style="margin-top:12px">Nombre, empezando por apellidos<input type="text" id="al-nom" placeholder="Reséndiz Olguín Ana Sofía"></label>
+    <p class="hint" style="margin-top:12px">El orden apellido-nombre no es capricho: es lo que hace que la lista de captura coincida con la del sistema escolar y que el pegado por posición funcione.</p></div>
+    <div class="modal-f"><button class="btn ghost" data-close-btn>Cancelar</button><button class="btn" data-act="guardar-alumno">Agregar</button></div>
+  </div></div>`;
+}
+
+function modalImportar(){
+  return `<div class="modal-bg" data-close><div class="modal" role="dialog">
+    <div class="modal-h"><div><div class="eyebrow">Padrón</div><h3 style="font-size:18px">Pegar una lista completa</h3></div><button class="x" data-close-btn>×</button></div>
+    <div class="modal-b">
+      <p class="lead" style="margin-top:0">Un renglón por estudiante, con la matrícula primero y luego el nombre. Se puede copiar directo de la lista del sistema escolar. Las matrículas ya registradas se omiten en lugar de duplicarse.</p>
+      <label class="field" style="margin-bottom:12px">Grupo de destino<select id="imp-gru">${GRUPOS.map(g=>`<option value="${g.id}" ${S.cfgGrupo===g.id?'selected':''}>${g.id} — ${g.sem}° semestre</option>`).join('')}</select></label>
+      <textarea id="imp-txt" placeholder="300201&#9;Aguilar Trejo Renata&#10;300208&#9;Bocanegra Nieves Emiliano&#10;300215&#9;Cabrera Uribe Itzel"></textarea>
+    </div>
+    <div class="modal-f"><button class="btn ghost" data-close-btn>Cancelar</button><button class="btn" data-act="aplicar-import">Dar de alta</button></div>
+  </div></div>`;
+}
+
+function modalAcceso(){
+  return `<div class="modal-bg" data-close><div class="modal" style="max-width:540px" role="dialog">
+    <div class="modal-h"><div><div class="eyebrow">Accesos</div><h3 style="font-size:18px">Agregar persona con vista completa</h3></div><button class="x" data-close-btn>×</button></div>
+    <div class="modal-b"><div class="grid2">
+      <label class="field">Nombre<input type="text" id="ac-nom" placeholder="Nombre y apellidos"></label>
+      <label class="field">Correo institucional<input type="text" id="ac-cor" placeholder="nombre@uaq.mx"></label>
+    </div>
+    <label class="field" style="margin-top:12px">Papel<select id="ac-rol"><option>Coordinación</option><option>Secretaría</option><option>Dirección</option><option>Tutoría</option></select></label>
+    <p class="hint" style="margin-top:12px">Conviene ser restrictivo. Cada persona añadida aquí ve las calificaciones de 120 estudiantes, y esa lista debería poder justificarse ante una revisión de protección de datos.</p></div>
+    <div class="modal-f"><button class="btn ghost" data-close-btn>Cancelar</button><button class="btn" data-act="guardar-acceso">Agregar</button></div>
+  </div></div>`;
+}
+
+function modalRespaldo(){
+  return `<div class="modal-bg" data-close><div class="modal" role="dialog">
+    <div class="modal-h"><div><div class="eyebrow">Respaldo</div><h3 style="font-size:18px">Cargar comentarios de otra sesión</h3></div><button class="x" data-close-btn>×</button></div>
+    <div class="modal-b">
+      <p class="lead" style="margin-top:0">Pega aquí el contenido de un archivo de respaldo. Los comentarios se suman a los que ya existen; no se pierde nada de lo que haya en pantalla.</p>
+      <textarea id="resp-txt" placeholder='{"version":1, "comentarios":[ ... ]}'></textarea>
+    </div>
+    <div class="modal-f"><button class="btn ghost" data-close-btn>Cancelar</button><button class="btn" data-act="aplicar-respaldo">Cargar</button></div>
+  </div></div>`;
+}
+
+/* ---------- expediente del estudiante ---------- */
+function modalAlumno(mat){
+  const a = alumnoByMat[mat]; const d = diagnostico(a);
+  const hist = {};
+  REG.forEach(r=>{ if(r.matricula===mat && r.ciclo!==CICLO){ const s=matById[r.materiaId].sem; (hist[s]=hist[s]||[]).push(r); } });
+  const notas = [];
+  REG.forEach(r=>{ if(r.matricula===mat && r.nota) notas.push(r); });
+
+  return `<div class="modal-bg" data-close><div class="modal" role="dialog" aria-label="Expediente">
+    <div class="modal-h"><div><div class="eyebrow">Expediente · matrícula ${a.matricula}</div><h3 style="font-size:19px">${esc(a.nombre)}</h3>
+      <div class="hint">Grupo ${a.grupo} · ${a.sem}° semestre</div></div><button class="x" data-close-btn>×</button></div>
+    <div class="modal-b">
+      <div style="margin-bottom:14px">
+        ${d.riesgo?'<span class="tag t-rep">Riesgo académico</span> ':''}${d.alertaNA?'<span class="tag t-na">'+d.naTotal+' NA</span> ':''}${d.alertaRei?'<span class="tag t-rie">Reincidencia</span>':''}${(!d.riesgo&&!d.alertaNA&&!d.alertaRei)?'<span class="tag t-ok">Sin alertas</span>':''}
+      </div>
+      <h4 style="font-size:14px;margin-bottom:8px">Ciclo en curso</h4>
+      <div class="scrollx"><table><thead><tr><th>Materia</th><th>P1</th><th>P2</th><th>P3</th><th>Final</th><th>Promedio</th></tr></thead><tbody>
+        ${MATERIAS.filter(m=>m.sem===a.sem).map(m=>{
+          const {prom} = promParciales(mat,m.id);
+          return `<tr><td style="border-left:5px solid ${EJES[m.eje].c};padding-left:9px">${esc(m.nombre)}</td>
+          ${[1,2,3,'F'].map(p=>`<td>${fmtNota(getReg(mat,m.id,CICLO,p))}</td>`).join('')}
+          <td><span class="g ${claseNota(prom)}">${prom!==null?prom.toFixed(1):'—'}</span></td></tr>`;}).join('')}
+      </tbody></table></div>
+      ${Object.keys(hist).length? `<h4 style="font-size:14px;margin:18px 0 8px">Semestres cursados</h4>
+      <div class="scrollx"><table><thead><tr><th>Semestre</th><th>Materia</th><th>Intento</th><th>Final</th></tr></thead><tbody>
+        ${Object.entries(hist).sort((x,y)=>x[0]-y[0]).map(([s,rs])=>rs.sort((p,q)=>p.ciclo.localeCompare(q.ciclo)).map(r=>`<tr>
+          <td>${s}°</td><td>${esc(matById[r.materiaId].nombre)}</td>
+          <td class="hint">${r.ciclo.endsWith('r')?'Recursamiento':'Primera vez'}</td>
+          <td>${fmtNota(r)}</td></tr>`).join('')).join('')}
+      </tbody></table></div>`:''}
+      ${notas.length? `<h4 style="font-size:14px;margin:18px 0 8px">Notas de profesores</h4>
+        ${notas.map(n=>`<div class="alerta" style="border-left-color:var(--uaq)"><div class="txt"><b>${esc(matById[n.materiaId].nombre)}</b> <span class="hint">· parcial ${n.parcial}</span><div>${esc(n.nota)}</div></div></div>`).join('')}` : ''}
+    </div>
+    <div class="modal-f"><button class="btn ghost" data-close-btn>Cerrar</button></div>
+  </div></div>`;
+}
+
+/* ---------- modal de pegado con verificación ---------- */
+function modalPegar(){
+  const roster = rosterDe(S.cap.grupo);
+  return `<div class="modal-bg" data-close><div class="modal" role="dialog" aria-label="Pegar lista">
+    <div class="modal-h"><div><div class="eyebrow">Captura por lote</div><h3 style="font-size:19px">Pegar una lista de calificaciones</h3></div><button class="x" data-close-btn>×</button></div>
+    <div class="modal-b">
+      <p class="lead" style="margin-top:0">Se aceptan dos formatos. El seguro trae dos columnas, matrícula y calificación, y verifica a quién corresponde cada número. El rápido trae sólo las calificaciones y confía en el orden alfabético; en ese caso deben ser exactamente ${roster.length} valores, uno por estudiante inscrito.</p>
+      <textarea id="pegado" placeholder="300031&#9;8.5&#10;300038&#9;NA&#10;300045&#9;7&#10;&#10;— o bien sólo las calificaciones, una por renglón —"></textarea>
+      <p class="hint" style="margin-top:8px">Al continuar se muestra el emparejamiento nombre por nombre antes de guardar nada.</p>
+    </div>
+    <div class="modal-f"><button class="btn ghost" data-close-btn>Cancelar</button><button class="btn" data-act="verificar">Verificar emparejamiento</button></div>
+  </div></div>`;
+}
+
+function parsePegado(txt){
+  return txt.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length).map(l=>{
+    const partes = l.split(/\t|;|,|\s{2,}/).map(p=>p.trim()).filter(p=>p.length);
+    if(partes.length>=2) return {mat:partes[0], val:partes[partes.length-1]};
+    return {mat:null, val:partes[0]};
+  });
+}
+function validaValor(v, esFinal){
+  const s = String(v).trim().toUpperCase().replace(',', '.');
+  if(s==='NA') return {ok:true, valor:'NA'};
+  if(!/^\d+(\.\d+)?$/.test(s)) return {ok:false, msg:'No es un número ni NA'};
+  const n = parseFloat(s);
+  if(n<0 || n>10) return {ok:false, msg:'Fuera del rango 0–10'};
+  if(esFinal && !Number.isInteger(n)) return {ok:false, msg:'La final no admite decimales'};
+  if(!esFinal && Math.round(n*10)!==n*10) return {ok:false, msg:'Máximo un decimal'};
+  return {ok:true, valor: esFinal ? Math.round(n) : Math.round(n*10)/10};
+}
+
+function modalVerificar(filas){
+  const roster = rosterDe(S.cap.grupo);
+  const esFinal = S.cap.parcial==='F';
+  const porMatricula = filas.every(f=>f.mat);
+  const res = [];
+  if(porMatricula){
+    const vistos = new Set();
+    filas.forEach((f,i)=>{
+      const a = alumnoByMat[f.mat];
+      const v = validaValor(f.val, esFinal);
+      if(!a) res.push({i, nombre:'—', mat:f.mat, val:f.val, estado:'error', msg:'Matrícula no inscrita en este grupo'});
+      else if(a.grupo!==S.cap.grupo) res.push({i, nombre:a.nombre, mat:f.mat, val:f.val, estado:'error', msg:'Pertenece al grupo '+a.grupo});
+      else if(!v.ok) res.push({i, nombre:a.nombre, mat:f.mat, val:f.val, estado:'error', msg:v.msg});
+      else { vistos.add(f.mat); res.push({i, nombre:a.nombre, mat:f.mat, val:v.valor, estado:'ok'}); }
+    });
+    roster.filter(a=>!vistos.has(a.matricula)).forEach(a=>res.push({i:'—', nombre:a.nombre, mat:a.matricula, val:'', estado:'falta', msg:'No viene en la lista pegada'}));
+  } else {
+    if(filas.length !== roster.length){
+      res.push({i:'—', nombre:'—', mat:'—', val:'—', estado:'error', msg:'Se pegaron '+filas.length+' valores y el grupo tiene '+roster.length+' estudiantes. El pegado por posición exige coincidencia exacta.'});
+    } else {
+      filas.forEach((f,i)=>{
+        const a = roster[i]; const v = validaValor(f.val, esFinal);
+        res.push(v.ok ? {i, nombre:a.nombre, mat:a.matricula, val:v.valor, estado:'ok'}
+                      : {i, nombre:a.nombre, mat:a.matricula, val:f.val, estado:'error', msg:v.msg});
+      });
+    }
+  }
+  const errores = res.filter(r=>r.estado!=='ok').length;
+  window.__verif = res;
+  return `<div class="modal-bg" data-close><div class="modal" role="dialog" aria-label="Verificación">
+    <div class="modal-h"><div><div class="eyebrow">${porMatricula?'Emparejado por matrícula':'Emparejado por posición alfabética'}</div>
+      <h3 style="font-size:19px">Revisar antes de guardar</h3></div><button class="x" data-close-btn>×</button></div>
+    <div class="modal-b">
+      ${errores? `<div class="alerta"><div class="txt"><b>${errores} renglón${errores===1?'':'es'} con problema.</b><div class="met">Los renglones correctos sí pueden guardarse; los marcados en rojo se omiten.</div></div></div>` : `<div class="alerta" style="border-left-color:var(--ok)"><div class="txt"><b>Todo cuadra.</b><div class="met">${res.length} calificaciones listas para guardar.</div></div></div>`}
+      <div class="scrollx"><table><thead><tr><th>#</th><th>Estudiante</th><th>Matrícula</th><th>Valor</th><th>Estado</th></tr></thead><tbody>
+        ${res.map(r=>`<tr><td class="num" style="color:var(--ink-3)">${r.i==='—'?'—':(r.i+1)}</td><td>${esc(r.nombre)}</td>
+        <td class="num">${esc(r.mat)}</td><td class="g ${r.estado==='ok'?claseNota(r.val):''}">${esc(String(r.val))}</td>
+        <td>${r.estado==='ok'?'<span class="tag t-ok">Correcto</span>':(r.estado==='falta'?'<span class="tag t-pend">'+esc(r.msg)+'</span>':'<span class="tag t-rep">'+esc(r.msg)+'</span>')}</td></tr>`).join('')}
+      </tbody></table></div>
+    </div>
+    <div class="modal-f"><button class="btn ghost" data-close-btn>Cancelar</button>
+      <button class="btn" data-act="aplicar-pegado">Aplicar los ${res.filter(r=>r.estado==='ok').length} renglones correctos</button></div>
+  </div></div>`;
+}
+
+function modalNota(mat){
+  const r = getReg(mat, S.cap.materiaId, CICLO, S.cap.parcial);
+  const a = alumnoByMat[mat];
+  return `<div class="modal-bg" data-close><div class="modal" style="max-width:560px" role="dialog">
+    <div class="modal-h"><div><div class="eyebrow">Nota para coordinación</div><h3 style="font-size:18px">${esc(a.nombre)}</h3></div><button class="x" data-close-btn>×</button></div>
+    <div class="modal-b">
+      <p class="hint" style="margin-top:0">Esta nota la lee la coordinación y queda en el expediente con autor y fecha. Sirve para explicar una calificación o pedir seguimiento, no para juicios sobre la persona.</p>
+      <textarea id="nota-txt" placeholder="Ejemplo: faltó a la evaluación por incapacidad médica entregada en coordinación.">${r? esc(r.nota):''}</textarea>
+    </div>
+    <div class="modal-f"><button class="btn ghost" data-close-btn>Cancelar</button><button class="btn" data-act="guardar-nota" data-mat="${mat}">Guardar nota</button></div>
+  </div></div>`;
+}
+
+function modalComentar(){
+  return `<div class="modal-bg" data-close><div class="modal" style="max-width:600px" role="dialog">
+    <div class="modal-h"><div><div class="eyebrow">Retroalimentación</div><h3 style="font-size:18px">Comentar esta pantalla</h3></div><button class="x" data-close-btn>×</button></div>
+    <div class="modal-b">
+      <p class="hint" style="margin-top:0">Qué falta, qué sobra, qué se ve confuso. El comentario queda ligado a la pantalla “${esc(S.vista)}” y a la sesión actual.</p>
+      <textarea id="com-txt" placeholder="Ejemplo: aquí necesitaríamos ver también el porcentaje de asistencia."></textarea>
+    </div>
+    <div class="modal-f"><button class="btn ghost" data-close-btn>Cancelar</button><button class="btn" data-act="guardar-com">Enviar comentario</button></div>
+  </div></div>`;
+}
+
+function abrirModal(html){ el('modal-root').innerHTML = html; }
+function cerrarModal(){ el('modal-root').innerHTML=''; }
+
+/* ============================================================
+   EVENTOS
+   ============================================================ */
+document.addEventListener('click', e=>{
+  const t = e.target.closest('[data-login],[data-vista],[data-act],[data-alumno],[data-capturar],[data-nota],[data-recordar],[data-close-btn],[data-ctab],[data-editar-profe],[data-toggle-profe],[data-baja],[data-quitar-acceso]');
+  if(e.target.hasAttribute && e.target.hasAttribute('data-close')){ cerrarModal(); return; }
+  if(!t) return;
+
+  if(t.dataset.login){
+    S.rol = t.dataset.login;
+    S.actor = S.rol==='coordinacion' ? COORD.find(c=>c.id===t.dataset.id) : PROFES.find(p=>p.id===t.dataset.id);
+    S.actor.rol = S.actor.rol || 'Profesor';
+    S.vista = S.rol==='coordinacion' ? 'panorama' : 'misgrupos';
+    render(); return;
+  }
+  if(t.dataset.closeBtn!==undefined || t.hasAttribute('data-close-btn')){ cerrarModal(); return; }
+  if(t.dataset.vista){ S.vista = t.dataset.vista; S.borrador={}; render(); return; }
+  if(t.dataset.alumno){ abrirModal(modalAlumno(t.dataset.alumno)); return; }
+  if(t.dataset.capturar){
+    const [mid,g] = t.dataset.capturar.split('|');
+    S.cap = {materiaId:mid, grupo:g, parcial:2}; S.borrador={}; S.vista='capturar'; render(); return;
+  }
+  if(t.dataset.nota){ abrirModal(modalNota(t.dataset.nota)); return; }
+  if(t.dataset.recordar){ toast('Recordatorio simulado enviado a '+t.dataset.recordar); return; }
+
+  if(t.dataset.ctab){ S.configTab = t.dataset.ctab; render(); return; }
+  if(t.dataset.editarProfe){ abrirModal(modalProfe(t.dataset.editarProfe)); return; }
+  if(t.dataset.toggleProfe){
+    const pr = PROFES.find(x=>x.id===t.dataset.toggleProfe);
+    pr.activo = !pr.activo;
+    bita(pr.activo?'Reactivó acceso de profesor':'Suspendió acceso de profesor', pr.nombre);
+    render(); toast(pr.activo? 'Acceso reactivado' : 'Acceso suspendido'); return;
+  }
+  if(t.dataset.baja){
+    const a = alumnoByMat[t.dataset.baja];
+    a.estado = a.estado==='baja' ? 'activo' : 'baja';
+    bita(a.estado==='baja'?'Dio de baja a estudiante':'Reinscribió a estudiante', a.nombre+' · '+a.matricula);
+    render(); toast(a.estado==='baja'? 'Estudiante dado de baja' : 'Estudiante reinscrito'); return;
+  }
+  if(t.dataset.quitarAcceso){
+    const i = COORD.findIndex(c=>c.id===t.dataset.quitarAcceso);
+    if(COORD[i].id===S.actor.id){ toast('No es posible quitarse el acceso a una misma'); return; }
+    if(COORD.length<=1){ toast('Debe quedar al menos una persona con vista completa'); return; }
+    bita('Quitó acceso completo', COORD[i].nombre+' · '+COORD[i].correo);
+    COORD.splice(i,1); render(); toast('Acceso retirado'); return;
+  }
+
+  const act = t.dataset.act;
+  if(act==='salir'){ S.rol=null; S.actor=null; S.borrador={}; render(); }
+  if(act==='comentar'){ abrirModal(modalComentar()); }
+  if(act==='guardar-com'){
+    const txt = el('com-txt').value.trim();
+    if(!txt){ toast('El comentario está vacío'); return; }
+    S.comentarios.push({id:nuevoId(), autor:S.actor.nombre, rol:S.rol==='coordinacion'?'Coordinación':'Profesor', vista:S.vista, texto:txt, hora:new Date().toLocaleString('es-MX'), enviado:false});
+    persistir(); cerrarModal(); render();
+    if(CONEXION.url){ toast('Enviando a la hoja…'); sincronizar(true); }
+    else toast(PERSISTE? 'Comentario guardado en este navegador' : 'Comentario registrado. Descarga el respaldo antes de cerrar.');
+  }
+  if(act==='copiar-com'){
+    const txt = S.comentarios.map(c=>`[${c.hora}] ${c.autor} (${c.rol}) — pantalla ${c.vista}:\n${c.texto}\n`).join('\n');
+    navigator.clipboard.writeText(txt||'Sin comentarios').then(()=>toast('Comentarios copiados'),()=>toast('No se pudo copiar'));
+  }
+  if(act==='descargar-com'){
+    const txt = 'Comentarios sobre el prototipo del tablero\n\n'+S.comentarios.map(c=>`[${c.hora}] ${c.autor} (${c.rol}) — pantalla ${c.vista}:\n${c.texto}\n`).join('\n');
+    const b = new Blob([txt],{type:'text/plain'}); const u = URL.createObjectURL(b);
+    const a = document.createElement('a'); a.href=u; a.download='comentarios-tablero.txt'; a.click(); URL.revokeObjectURL(u);
+  }
+  if(act==='nuevo-profe'){ abrirModal(modalProfe(null)); }
+  if(act==='guardar-profe'){
+    const id = t.dataset.pid, n = el('pf-nom').value.trim(), c = el('pf-cor').value.trim();
+    if(!n || !c){ toast('Faltan el nombre o el correo'); return; }
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c)){ toast('El correo no tiene forma válida'); return; }
+    if(PROFES.some(x=>x.correo.toLowerCase()===c.toLowerCase() && x.id!==id)){ toast('Ese correo ya está registrado'); return; }
+    if(id){ const pr=PROFES.find(x=>x.id===id); pr.nombre=n; pr.correo=c; bita('Editó datos de profesor', n+' · '+c); }
+    else { PROFES.push({id:'p'+Date.now().toString(36), nombre:n, correo:c, activo:true}); bita('Registró profesor', n+' · '+c); }
+    cerrarModal(); render(); toast('Profesor guardado');
+  }
+  if(act==='nuevo-alumno'){ abrirModal(modalAlumnoNuevo()); }
+  if(act==='guardar-alumno'){
+    const m = el('al-mat').value.trim(), n = el('al-nom').value.trim(), g = el('al-gru').value;
+    if(!/^\d{4,10}$/.test(m)){ toast('La matrícula debe ser numérica'); return; }
+    if(alumnoByMat[m]){ toast('Esa matrícula ya está registrada'); return; }
+    if(!n){ toast('Falta el nombre'); return; }
+    const sem = GRUPOS.find(x=>x.id===g).sem;
+    ALUMNOS.push({matricula:m, nombre:n, grupo:g, sem, estado:'activo', perfil:'estable'});
+    ordenarAlumnos(); reindexAlumnos(); crearRegistrosAlumno(alumnoByMat[m]);
+    bita('Dio de alta a estudiante', n+' · '+m+' · grupo '+g);
+    cerrarModal(); render(); toast('Estudiante agregado');
+  }
+  if(act==='importar-alumnos'){ abrirModal(modalImportar()); }
+  if(act==='aplicar-import'){
+    const g = el('imp-gru').value, sem = GRUPOS.find(x=>x.id===g).sem;
+    const filas = el('imp-txt').value.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+    if(!filas.length){ toast('No se pegó nada'); return; }
+    let alta=0, dup=0, mal=0;
+    filas.forEach(l=>{
+      const partes = l.split(/\t|;|,|\s{2,}/).map(x=>x.trim()).filter(Boolean);
+      if(partes.length<2){ mal++; return; }
+      const m = partes[0].replace(/\D/g,''), n = partes.slice(1).join(' ');
+      if(!/^\d{4,10}$/.test(m) || !n){ mal++; return; }
+      if(alumnoByMat[m]){ dup++; return; }
+      ALUMNOS.push({matricula:m, nombre:n, grupo:g, sem, estado:'activo', perfil:'estable'});
+      reindexAlumnos(); alta++;
+    });
+    ordenarAlumnos(); reindexAlumnos();
+    ALUMNOS.filter(a=>a.grupo===g).forEach(a=>crearRegistrosAlumno(a));
+    bita('Importó lista de grupo', alta+' altas en '+g+(dup?' · '+dup+' repetidas':'')+(mal?' · '+mal+' ilegibles':''));
+    cerrarModal(); render();
+    toast(alta+' altas · '+dup+' ya existían · '+mal+' renglones ilegibles');
+  }
+  if(act==='sincronizar'){ sincronizar(false); }
+  if(act==='traer-hoja'){ traerDeSheet(); }
+  if(act==='nuevo-acceso'){ abrirModal(modalAcceso()); }
+  if(act==='guardar-acceso'){
+    const n = el('ac-nom').value.trim(), c = el('ac-cor').value.trim(), r = el('ac-rol').value;
+    if(!n || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c)){ toast('Faltan el nombre o un correo válido'); return; }
+    COORD.push({id:'c'+Date.now().toString(36), nombre:n, correo:c, rol:r, activo:true});
+    bita('Otorgó acceso completo', n+' · '+c+' · '+r);
+    cerrarModal(); render(); toast('Acceso otorgado');
+  }
+  if(act==='descargar-bita'){
+    descargar('bitacora-tablero.txt', 'Bitácora de cambios del tablero\n\n'+BITACORA.map(b=>`[${b.hora}] ${b.autor} — ${b.accion}: ${b.detalle}`).join('\n'));
+  }
+  if(act==='respaldo'){ descargar('respaldo-tablero.json', paqueteRespaldo(), 'application/json'); toast('Respaldo descargado'); }
+  if(act==='cargar-respaldo'){ abrirModal(modalRespaldo()); }
+  if(act==='aplicar-respaldo'){
+    try{
+      const d = JSON.parse(el('resp-txt').value);
+      const n = (d.comentarios||[]).length;
+      (d.comentarios||[]).forEach(c=>S.comentarios.push(c));
+      (d.bitacora||[]).forEach(b=>BITACORA.push(b));
+      persistir(); cerrarModal(); render(); toast(n+' comentarios cargados');
+    }catch(err){ toast('El texto pegado no es un respaldo válido'); }
+  }
+  if(act==='pegar'){ abrirModal(modalPegar()); }
+  if(act==='verificar'){
+    const filas = parsePegado(el('pegado').value);
+    if(!filas.length){ toast('No se pegó nada'); return; }
+    abrirModal(modalVerificar(filas));
+  }
+  if(act==='aplicar-pegado'){
+    (window.__verif||[]).filter(r=>r.estado==='ok').forEach(r=>{ S.borrador[r.mat] = r.val; });
+    cerrarModal(); render(); toast('Valores cargados. Falta guardar.');
+  }
+  if(act==='guardar-nota'){
+    const mat = t.dataset.mat, txt = el('nota-txt').value.trim();
+    const r = getReg(mat, S.cap.materiaId, CICLO, S.cap.parcial);
+    if(r) r.nota = txt;
+    cerrarModal(); render(); toast(txt? 'Nota guardada' : 'Nota eliminada');
+  }
+  if(act==='guardar'){
+    const esFinal = S.cap.parcial==='F';
+    let ok=0, err=0;
+    document.querySelectorAll('[data-cap]').forEach(inp=>{
+      const mat = inp.dataset.cap, raw = inp.value.trim();
+      inp.classList.remove('bad');
+      if(!raw) return;
+      const v = validaValor(raw, esFinal);
+      if(!v.ok){ inp.classList.add('bad'); err++; return; }
+      const r = getReg(mat, S.cap.materiaId, CICLO, S.cap.parcial);
+      if(r){ r.valor=v.valor; r.estado='capturado'; r.capturadoPor=S.actor.id; ok++; }
+    });
+    if(err){ toast(err+' calificación'+(err===1?'':'es')+' fuera de regla. Se marcaron en rojo.'); return; }
+    S.borrador={}; render(); toast(ok+' calificaciones guardadas');
+  }
+});
+
+document.addEventListener('change', e=>{
+  const t = e.target;
+  if(t.dataset.filtro){ S.filtro[t.dataset.filtro] = t.value; render(); }
+  if(t.dataset.umbral!==undefined && t.hasAttribute('data-umbral')){
+    const v = parseFloat(t.value); if(!isNaN(v)) S.umbral[t.dataset.umbral]=v; render();
+  }
+  if(t.hasAttribute('data-cfggrupo')){ S.cfgGrupo = t.value; render(); }
+  if(t.hasAttribute('data-asig')){
+    const [mid,g] = t.dataset.asig.split('|');
+    const a = ASIG.find(x=>x.materiaId===mid && x.grupo===g);
+    a.profesorId = t.value;
+    bita('Reasignó materia', matById[mid].nombre+' · '+g+' → '+PROFES.find(pr=>pr.id===t.value).nombre);
+    render(); toast('Asignación actualizada');
+  }
+  if(t.hasAttribute('data-mover')){
+    const a = alumnoByMat[t.dataset.mover], g = t.value;
+    if(a.grupo!==g){
+      a.grupo = g; a.sem = GRUPOS.find(x=>x.id===g).sem;
+      ordenarAlumnos(); reindexAlumnos(); crearRegistrosAlumno(a);
+      bita('Cambió de grupo a estudiante', a.nombre+' → '+g);
+      S.cfgGrupo = g; render(); toast('Estudiante movido a '+g);
+    }
+  }
+  if(t.hasAttribute('data-cal')){
+    const [i,campo] = t.dataset.cal.split('|'); const c = CALENDARIO[+i];
+    if(campo==='cerrado') c.cerrado = t.value==='si'; else c[campo] = t.value;
+    bita('Editó el calendario de captura', c.etiqueta+' · '+campo+' → '+t.value);
+    render();
+  }
+  if(t.hasAttribute('data-aviso')){
+    S.aviso[t.dataset.aviso] = t.dataset.aviso==='previo' ? parseInt(t.value,10) : t.value;
+    bita('Cambió reglas de aviso', t.dataset.aviso+' → '+t.value);
+  }
+  if(t.hasAttribute('data-parcial')){
+    S.cap.parcial = t.value==='F' ? 'F' : parseInt(t.value,10); S.borrador={}; render();
+  }
+});
+document.addEventListener('input', e=>{
+  if(e.target.dataset.filtro==='q'){ S.filtro.q = e.target.value; const pos=e.target.selectionStart; render();
+    const nx = document.querySelector('[data-filtro="q"]'); if(nx){ nx.focus(); nx.setSelectionRange(pos,pos); } }
+  if(e.target.dataset.cap!==undefined && e.target.hasAttribute('data-cap')){ S.borrador[e.target.dataset.cap]=e.target.value; }
+});
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') cerrarModal(); });
+
+recuperar();
+cargarConexion();
+if(CONEXION.url) CONEXION.estado='sin probar';
+render();
+</script>
+</body>
+</html>
